@@ -17,7 +17,7 @@
     <SUITE FILE_PATH="coverage/HGSpider$run.coverage" NAME="run Coverage Results" MODIFIED="1534315143342" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/bin" />
     <SUITE FILE_PATH="coverage/HGSpider$log.coverage" NAME="log Coverage Results" MODIFIED="1534130073286" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib" />
     <SUITE FILE_PATH="coverage/HGSpider$sql_test.coverage" NAME="sql_test Coverage Results" MODIFIED="1534764701753" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib" />
-    <SUITE FILE_PATH="coverage/HGSpider$run__1_.coverage" NAME="run (1) Coverage Results" MODIFIED="1534837276785" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/HGSpider$run__1_.coverage" NAME="run (1) Coverage Results" MODIFIED="1534852660735" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="FUSProjectUsageTrigger">
     <session id="-902375113">
@@ -35,14 +35,14 @@
         <counts>
           <entry key="dummy" value="24" />
           <entry key="ini" value="4" />
-          <entry key="py" value="9505" />
+          <entry key="py" value="9564" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="Ini" value="4" />
           <entry key="PLAIN_TEXT" value="24" />
-          <entry key="Python" value="9505" />
+          <entry key="Python" value="9564" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
@@ -66,25 +66,24 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/hgSpider/nemsspider.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="244">
-              <caret line="544" column="53" lean-forward="true" selection-start-line="544" selection-start-column="53" selection-end-line="544" selection-end-column="53" />
+            <state relative-caret-position="328">
+              <caret line="388" column="59" lean-forward="true" selection-start-line="388" selection-start-column="59" selection-end-line="388" selection-end-column="59" />
               <folding>
                 <element signature="e#133#144#0" expanded="true" />
                 <element signature="e#6607#7814#0" />
                 <element signature="e#7898#10728#0" />
                 <element signature="e#10971#11202#0" />
                 <element signature="e#14283#14678#0" />
-                <element signature="e#13079#14716#0" />
-                <marker date="1534839140606" expanded="true" signature="1632:4944" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="7606:9037" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="9102:9739" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="9475:9739" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="18017:18023" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="18087:18351" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="18436:18745" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="18741:18745" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="18796:20663" ph="..." />
-                <marker date="1534839140606" expanded="true" signature="22210:23556" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="1632:4944" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="7606:9037" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="9102:9739" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="9475:9739" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="18199:18205" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="18269:18533" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="18618:18927" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="18923:18927" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="18978:20845" ph="..." />
+                <marker date="1534853249789" expanded="true" signature="22392:23738" ph="..." />
               </folding>
             </state>
           </provider>
@@ -129,8 +128,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/hgSpider/nptsspider.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="550">
-              <caret line="547" column="30" lean-forward="true" selection-start-line="547" selection-start-column="30" selection-end-line="547" selection-end-column="30" />
+            <state relative-caret-position="296">
+              <caret line="60" column="43" selection-start-line="60" selection-start-column="43" selection-end-line="60" selection-end-column="43" />
               <folding>
                 <element signature="e#133#144#0" expanded="true" />
                 <element signature="e#1028#1702#0" />
@@ -147,9 +146,9 @@
                 <element signature="e#17864#19366#0" />
                 <element signature="e#19571#21135#0" />
                 <element signature="e#19472#19766#0" />
-                <marker date="1534833542994" expanded="true" signature="6041:7266" ph="..." />
-                <marker date="1534833542994" expanded="true" signature="16365:16371" ph="..." />
-                <marker date="1534833542994" expanded="true" signature="17111:18224" ph="..." />
+                <marker date="1534843946502" expanded="true" signature="6041:7266" ph="..." />
+                <marker date="1534843946502" expanded="true" signature="16365:16371" ph="..." />
+                <marker date="1534843946502" expanded="true" signature="17111:18224" ph="..." />
               </folding>
             </state>
           </provider>
@@ -212,7 +211,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>log</find>
       <find>close</find>
       <find>maxshared</find>
       <find>print</find>
@@ -229,7 +227,6 @@
       <find>get_local_db_min_gdsseqno</find>
       <find>re_update_imglist_db</find>
       <find>update_imglist_db</find>
-      <find>get_npts_exg_list_info</find>
       <find>re_update_exglist_db</find>
       <find>cm</find>
       <find>update_nems_exg_list_info</find>
@@ -238,10 +235,12 @@
       <find>ucnsqty</find>
       <find>update_db_cm</find>
       <find>update_cmlist_db</find>
-      <find>update_nems_cm_list_info</find>
       <find>update_nems_img_list_info</find>
       <find>re_update_ems_img_list_db</find>
       <find>select *</find>
+      <find>get_npts_exg_list_info</find>
+      <find>update_npts_cm_list_info</find>
+      <find>update_nems_cm_list_info</find>
     </findStrings>
   </component>
   <component name="IdeDocumentHistory">
@@ -272,9 +271,9 @@
         <option value="$PROJECT_DIR$/conf/settings.py" />
         <option value="$PROJECT_DIR$/lib/sql.py" />
         <option value="$PROJECT_DIR$/lib/sql_test.py" />
-        <option value="$PROJECT_DIR$/hgSpider/nptsspider.py" />
         <option value="$PROJECT_DIR$/run.py" />
         <option value="$PROJECT_DIR$/hgSpider/basecls.py" />
+        <option value="$PROJECT_DIR$/hgSpider/nptsspider.py" />
         <option value="$PROJECT_DIR$/hgSpider/nemsspider.py" />
       </list>
     </option>
@@ -285,7 +284,7 @@
     <detection-done>true</detection-done>
     <sorting>DEFINITION_ORDER</sorting>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="-8" />
     <option name="y" value="-8" />
     <option name="width" value="1936" />
@@ -519,7 +518,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1936" height="1066" extended-state="7" />
+    <frame x="-8" y="-8" width="1936" height="1066" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.18293992" />
@@ -720,33 +719,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/hgSpider/nptsspider.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="550">
-          <caret line="547" column="30" lean-forward="true" selection-start-line="547" selection-start-column="30" selection-end-line="547" selection-end-column="30" />
-          <folding>
-            <element signature="e#133#144#0" expanded="true" />
-            <element signature="e#1028#1702#0" />
-            <element signature="e#3877#4232#0" />
-            <element signature="e#5281#6923#0" />
-            <element signature="e#5304#6992#0" />
-            <element signature="e#6949#7243#0" />
-            <element signature="e#7059#8879#0" />
-            <element signature="e#8954#10166#0" />
-            <element signature="e#10250#13622#0" />
-            <element signature="e#15833#17575#0" />
-            <element signature="e#15871#17600#0" />
-            <element signature="e#17697#19471#0" />
-            <element signature="e#17864#19366#0" />
-            <element signature="e#19571#21135#0" />
-            <element signature="e#19472#19766#0" />
-            <marker date="1534833542994" expanded="true" signature="6041:7266" ph="..." />
-            <marker date="1534833542994" expanded="true" signature="16365:16371" ph="..." />
-            <marker date="1534833542994" expanded="true" signature="17111:18224" ph="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/conf/settings.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="33">
@@ -775,27 +747,53 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/hgSpider/nptsspider.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="296">
+          <caret line="60" column="43" selection-start-line="60" selection-start-column="43" selection-end-line="60" selection-end-column="43" />
+          <folding>
+            <element signature="e#133#144#0" expanded="true" />
+            <element signature="e#1028#1702#0" />
+            <element signature="e#3877#4232#0" />
+            <element signature="e#5281#6923#0" />
+            <element signature="e#5304#6992#0" />
+            <element signature="e#6949#7243#0" />
+            <element signature="e#7059#8879#0" />
+            <element signature="e#8954#10166#0" />
+            <element signature="e#10250#13622#0" />
+            <element signature="e#15833#17575#0" />
+            <element signature="e#15871#17600#0" />
+            <element signature="e#17697#19471#0" />
+            <element signature="e#17864#19366#0" />
+            <element signature="e#19571#21135#0" />
+            <element signature="e#19472#19766#0" />
+            <marker date="1534843946502" expanded="true" signature="6041:7266" ph="..." />
+            <marker date="1534843946502" expanded="true" signature="16365:16371" ph="..." />
+            <marker date="1534843946502" expanded="true" signature="17111:18224" ph="..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/hgSpider/nemsspider.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="244">
-          <caret line="544" column="53" lean-forward="true" selection-start-line="544" selection-start-column="53" selection-end-line="544" selection-end-column="53" />
+        <state relative-caret-position="328">
+          <caret line="388" column="59" lean-forward="true" selection-start-line="388" selection-start-column="59" selection-end-line="388" selection-end-column="59" />
           <folding>
             <element signature="e#133#144#0" expanded="true" />
             <element signature="e#6607#7814#0" />
             <element signature="e#7898#10728#0" />
             <element signature="e#10971#11202#0" />
             <element signature="e#14283#14678#0" />
-            <element signature="e#13079#14716#0" />
-            <marker date="1534839140606" expanded="true" signature="1632:4944" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="7606:9037" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="9102:9739" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="9475:9739" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="18017:18023" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="18087:18351" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="18436:18745" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="18741:18745" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="18796:20663" ph="..." />
-            <marker date="1534839140606" expanded="true" signature="22210:23556" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="1632:4944" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="7606:9037" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="9102:9739" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="9475:9739" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="18199:18205" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="18269:18533" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="18618:18927" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="18923:18927" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="18978:20845" ph="..." />
+            <marker date="1534853249789" expanded="true" signature="22392:23738" ph="..." />
           </folding>
         </state>
       </provider>

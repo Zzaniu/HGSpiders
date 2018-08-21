@@ -545,4 +545,4 @@ class NptsSpider(BaseCls):
         self.update_npts_head_db(nptsno, seqNo)
         self.update_npts_img_list_info(nptsno, seqNo)
         self.update_npts_exg_list_info(nptsno, seqNo)
-        self.update_npts_cm_list_info(nptsno, seqNo)
+        # self.update_npts_cm_list_info(nptsno, seqNo)

@@ -373,10 +373,11 @@ class NemsSpider(BaseCls):
             'GDSSEQNO': data.get('gdsseqno'),
             'GDSMTNO': data.get('gdsmtno', ''),
             'GDECD': data.get('gdecd', ''),
-            'GDSNM': data.get('gdsNm', ''),
+            'GDSNM': data.get('gdsnm', ''),
             'ENDPRDGDSSPCFMODELDESC': data.get('endprdgdsspcfmodeldesc', ''),
             'DCLUNITCD': data.get('dclunitcd', ''),
             'LAWFUNITCD': data.get('lawfunitcd', ''),
+            'SECDLAWFUNITCD': data.get('secdlawfunitcd', ''),
             'DCLUPRC': data.get('dcluprcamt', ''),
             'DCLCURRCD': data.get('dclcurrcd', ''),
             'DCLQTY': data.get('dclqty', ''),
@@ -385,6 +386,8 @@ class NemsSpider(BaseCls):
             'ETPSEXEMARKCD': data.get('etpsexemarkcd', ''),
             'MODFMARKCD': data.get('modfmarkcd', ''),
             'VCLRPRIDINITQTY': data.get('vclrpridinitqty', ''),
+            'QTYCNTRMARKCD': data.get('qtycntrmarkcd', ''),
+            'CUSMEXEMARKCD': data.get('cusmexemarkcd', ''),
             'APPRMAXSURPQTY': data.get('apprmaxsurpqty', ''),
         }
         _d = copy.deepcopy(d)
@@ -543,7 +546,7 @@ class NemsSpider(BaseCls):
         self.update_nems_head_db(nemsno, seqNo)
         self.update_nems_img_list_info(nemsno, seqNo)
         self.update_nems_exg_list_info(nemsno, seqNo)
-        self.update_nems_cm_list_info(nemsno, seqNo)
+        # self.update_nems_cm_list_info(nemsno, seqNo)
 
 
 if __name__ == "__main__":
