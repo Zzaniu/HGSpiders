@@ -8,9 +8,6 @@ import json
 import random
 import time
 
-import sys
-import requests
-
 from conf import settings
 from hgSpider.basecls import BaseCls
 from lib.mail import error_2_send_email
@@ -48,16 +45,10 @@ class NptsSpider(BaseCls):
         self.save_cookie()
         return self.session.cookies.get_dict()
 
-    @error_2_send_email
-    def update_npts_cm_list_db(self, gdsSeqno, response_dict):
-        """更新单耗表体"""
-        pass
-
     def update_npts_cm_list_info(self, nptsno, seqNo):
         has_breakpoint = False
         max_gSeqno = self.get_local_db_max_or_min_gseqno('NptsEmlConsumeType', seqNo)
         min_gSeqno = self.get_local_db_max_or_min_gseqno('NptsEmlConsumeType', seqNo, max=False)
-        print('min_gSeqno = ', min_gSeqno)
         # 只要有最大值，且最小值不是1，说明上次爬的过程中中断了，要往后面找，一直更新到1.第二天再更新海关新增的
         if max_gSeqno is None:
             max_gSeqno = 0
@@ -93,6 +84,7 @@ class NptsSpider(BaseCls):
                     time.sleep(wait_time)
                     continue
 
+    @error_2_send_email
     def get_local_db_max_or_min_gseqno(self, tabname, seqNo, max=True):
         if max:
             _sql = 'SELECT max(GSEQNO) as gSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
@@ -105,63 +97,92 @@ class NptsSpider(BaseCls):
 
     @error_2_send_email
     def update_npts_exg_list_info(self, nptsno, seqNo):
-        gdsSeqno = self.get_local_db_max_gdsseqno('NptsEmlExgType', seqNo)
-        if gdsSeqno is None:
-            gdsSeqno = 0
+        has_breakpoint = False
+        max_gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlExgType', seqNo)
+        min_gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlExgType', seqNo, max=False)
+        if max_gdsSeqno is None:
+            max_gdsSeqno = 0
+        else:
+            if min_gdsSeqno > 1:
+                has_breakpoint = True
         page = 0
         while True:
             page += 1
             response_dict = self.get_npts_exg_list_info(page, seqNo)
-            if self.update_exglist_db(gdsSeqno, response_dict, nptsno):
-                _gdsSeqno = self.get_local_db_max_gdsseqno('NptsEmlExgType', seqNo)
-                if _gdsSeqno and _gdsSeqno > gdsSeqno:
-                    log.info('手册号{}的成品序号已更新至 {}'.format(nptsno, _gdsSeqno))
+            if has_breakpoint:
+                if self.re_update_exglist_db(min_gdsSeqno, response_dict, nptsno):
+                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlExgType', seqNo, max=False)
+                    if 1 == _gdsSeqno:
+                        log.info('手册号{}的成品序号已更新至 {}'.format(nptsno, _gdsSeqno))
+                        return
                 else:
-                    log.info('海关今日暂未更新手册号为{}的成品..'.format(nptsno))
-                return
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新手册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
             else:
-                wait_time = random.randint(5, 10)
-                log.info('海关今日更新手册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
-                time.sleep(wait_time)
-                continue
+                if self.update_exglist_db(max_gdsSeqno, response_dict, nptsno):
+                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlExgType', seqNo)
+                    if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
+                        log.info('手册号{}的成品序号已更新至 {}'.format(nptsno, _gdsSeqno))
+                    else:
+                        log.info('海关今日暂未更新手册号为{}的成品..'.format(nptsno))
+                    return
+                else:
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新手册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
 
     @error_2_send_email
+    def updata_db_exg(self, data, nptsno):
+        d = {
+            'SEQNO': data.get('seqNo'),
+            'GDSSEQNO': data.get('gdsSeqno'),
+            'GDSMTNO': data.get('gdsMtno', ''),
+            'GDECD': data.get('gdecd', ''),
+            'GDSNM': data.get('gdsNm', ''),
+            'ENDPRDGDSSPCFMODELDESC': data.get('endprdGdsSpcfModelDesc', ''),
+            'DCLUNITCD': data.get('dclUnitcd', ''),
+            'LAWFUNITCD': data.get('lawfUnitcd', ''),
+            'DCLUPRC': data.get('dclUprcAmt', ''),
+            'DCLCURRCD': data.get('dclCurrcd', ''),
+            'DCLQTY': data.get('dclQty', ''),
+            'DCLTOTALPRC': data.get('dclTotalAmt', ''),
+            'PRMKTNATCD': data.get('natcd', ''),
+            'LVYRLFMODECD': data.get('lvyrlfModecd', ''),
+            'MODFMARKCD': data.get('modfMarkcd', ''),
+            'CUSMEXEMARKCD': data.get('cusmExeMarkcd', ''),
+            'UCNSTQSNFLAG': data.get('ucnsTqsnFlag', ''),
+            'CSTTNFLAG': data.get('csttnFlag', ''),
+        }
+        _d = copy.deepcopy(d)
+        for k in _d:
+            if _d[k]:
+                pass
+            else:
+                d.pop(k)
+        self.sql.insert('NptsEmlExgType', **d)
+        log.info('手册号{}已更新成品序号：{}'.format(nptsno, data['gdsSeqno']))
+
     def update_exglist_db(self, gdsSeqno, response_dict, nptsno):
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsSeqno']) > gdsSeqno:
-                d = {
-                    'SEQNO': data.get('seqNo'),
-                    'GDSSEQNO': data.get('gdsSeqno'),
-                    'GDSMTNO': data.get('gdsMtno', ''),
-                    'GDECD': data.get('gdecd', ''),
-                    'GDSNM': data.get('gdsNm', ''),
-                    'ENDPRDGDSSPCFMODELDESC': data.get('endprdGdsSpcfModelDesc', ''),
-                    'DCLUNITCD': data.get('dclUnitcd', ''),
-                    'LAWFUNITCD': data.get('lawfUnitcd', ''),
-                    'DCLUPRC': data.get('dclUprcAmt', ''),
-                    'DCLCURRCD': data.get('dclCurrcd', ''),
-                    'DCLQTY': data.get('dclQty', ''),
-                    'DCLTOTALPRC': data.get('dclTotalAmt', ''),
-                    'PRMKTNATCD': data.get('natcd', ''),
-                    'LVYRLFMODECD': data.get('lvyrlfModecd', ''),
-                    'MODFMARKCD': data.get('modfMarkcd', ''),
-                    'CUSMEXEMARKCD': data.get('cusmExeMarkcd', ''),
-                    'UCNSTQSNFLAG': data.get('ucnsTqsnFlag', ''),
-                    'CSTTNFLAG': data.get('csttnFlag', ''),
-                }
-                _d = copy.deepcopy(d)
-                for k in _d:
-                    if _d[k]:
-                        pass
-                    else:
-                        d.pop(k)
-                self.sql.insert('NptsEmlExgType', **d)
-                log.info('手册号{}已更新成品序号：{}'.format(nptsno, data['gdsSeqno']))
+                self.updata_db_exg(data, nptsno)
                 if 1 == int(data['gdsSeqno']):
                     ret = True
             else:
                 ret = True
+        return ret
+
+    def re_update_exglist_db(self, gdsSeqno, response_dict, nptsno):
+        ret = False
+        for data in response_dict['rows']:
+            if int(data['gdsSeqno']) < gdsSeqno:
+                self.updata_db_exg(data, nptsno)
+                if 1 == int(data['gdsSeqno']):
+                    ret = True
         return ret
 
     @error_2_send_email
@@ -276,14 +297,12 @@ class NptsSpider(BaseCls):
             'OWNERETPSNO': head_obj.get('rmk', ''),
             'OWNERETPSNM': head_obj.get('rmk', ''),
         }
-        # _d = copy.deepcopy(d)
-        # print('_d = ', _d)
-        # for k in _d:
-        #     if _d[k]:
-        #         pass
-        #     else:
-        #         d.pop(k)
-        # print('d = ', d)
+        _d = copy.deepcopy(d)
+        for k in _d:
+            if _d[k]:
+                pass
+            else:
+                d.pop(k)
         if self.sql.insert('NptsEmlHead', **d):
             log.info('手册号{}已插入表头信息'.format(nptsno))
             return True
@@ -291,125 +310,63 @@ class NptsSpider(BaseCls):
             log.error('手册号{}插入表头信息失败，请检查..'.format(nptsno))
             raise Exception('手册号{}插入表头信息失败，请检查..'.format(nptsno))
 
-    def get_local_db_max_gdsseqno(self, tabname, seqNo):
-        _sql = 'SELECT max(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
+    @error_2_send_email
+    def get_local_db_max_or_min_gdsseqno(self, tabname, seqNo, max=True):
+        if max:
+            _sql = 'SELECT max(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
+        else:
+            _sql = 'SELECT min(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
         ret = self.sql.raw_sql(_sql)
         if ret.get('status'):
             gdsSeqno = ret['ret_tuples'][0][0]
             return gdsSeqno
 
-    def get_local_db_min_gdsseqno(self, tabname, seqNo):
-        _sql = 'SELECT min(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
-        ret = self.sql.raw_sql(_sql)
-        if ret.get('status'):
-            gdsSeqno = ret['ret_tuples'][0][0]
-            return gdsSeqno
-
-    def re_update_imglist_db(self, gdsSeqno, response_dict):
-        ret = False
-        for data in response_dict['rows']:
-            if int(data['gdsseqno']) < gdsSeqno:
-                d = {
-                    'SEQNO': data.get('seqNo', ''),
-                    'GDSSEQNO': data.get('gdsSeqno'),
-                    'GDSMTNO': data.get('gdsMtno', ''),
-                    'GDECD': data.get('gdecd', ''),
-                    'GDSNM': data.get('gdsNm', ''),
-                    'ENDPRDGDSSPCFMODELDESC': data.get('endprdGdsSpcfModelDesc', ''),
-                    'DCLUNITCD': data.get('dclUnitcd', ''),
-                    'LAWFUNITCD': data.get('lawfUnitcd', ''),
-                    'DCLUPRC': data.get('dclUprcAmt', ''),
-                    'DCLCURRCD': data.get('dclCurrcd', ''),
-                    'DCLQTY': data.get('dclQty', ''),
-                    'DCLTOTALPRC': data.get('dclTotalAmt', ''),
-                    'PRMKTNATCD': data.get('natcd', ''),
-                    'LVYRLFMODECD': data.get('lvyrlfModecd', ''),
-                    'ADTMTRMARKCD': data.get('adjmtrMarkcd', ''),
-                    'MODFMARKCD': data.get('modfMarkcd', ''),
-                }
-                _d = copy.deepcopy(d)
-                for k in _d:
-                    if _d[k]:
-                        pass
-                    else:
-                        d.pop(k)
-                self.sql.insert('NptsEmlImgType', **d)
-                log.info('已更新料件序号：{}'.format(data['gdsseqno']))
-                if 1 == int(data['gdsseqno']):
-                    ret = True
-        return ret
+    @error_2_send_email
+    def update_db_cm(self, data, nptsno):
+        d = {
+            'SEQNO': data.get('seqNo'),
+            'GSEQNO': data.get('gseqNo'),
+            'ENDPRDSEQNO': data.get('endprdSeqno'),
+            'ENDPRDGDSMTNO': data.get('endprdGdsMtno', ''),
+            'ENDPRDGDECD': data.get('endprdGdecd', ''),
+            'ENDPRDGDENM': data.get('endprdGdsNm', ''),
+            'MTPCKSEQNO': data.get('mtpckSeqno'),
+            'GDSMTNO': data.get('mtpckGdsMtno', ''),
+            'MTPCKGDECD': data.get('mtpckGdecd', ''),
+            'MTPCKGDSNM': data.get('mtpckGdsNm', ''),
+            'UCNSVERNO': data.get('ucnsVerno', ''),
+            'UCNSQTY': data.get('ucnsQty', ''),
+            'NETUSEUPQTY': data.get('netUseupQty', ''),
+            'TGBLLOSSRATE': data.get('tgblLossRate', ''),
+            'INTGBLOSSRATE': data.get('intgbLossRate', ''),
+            'UCNSDCLSTUCD': data.get('ucnsDclStucd', ''),
+            'BONDMTPCKPRPR': data.get('bondMtpckPrpr', ''),
+            'MODFMARKCD': data.get('modfMarkcd', ''),
+            'ETPSEXEMARKCD': data.get('etpsExeMarkcd', ''),
+        }
+        _d = copy.deepcopy(d)
+        for k in _d:
+            if _d[k]:
+                pass
+            else:
+                d.pop(k)
+        self.sql.insert('NptsEmlConsumeType', **d)
+        log.info('手册号{}已更新单损耗序号：{}'.format(nptsno, data['gseqNo']))
 
     def re_update_cmlist_db(self, gSeqno, response_dict, nptsno):
         ret = False
         for data in response_dict['rows']:
             if int(data['gseqNo']) < gSeqno:
-                d = {
-                    'SEQNO': data.get('seqNo'),
-                    'GSEQNO': data.get('gseqNo'),
-                    'ENDPRDSEQNO': data.get('endprdSeqno'),
-                    'ENDPRDGDSMTNO': data.get('endprdGdsMtno', ''),
-                    'ENDPRDGDECD': data.get('endprdGdecd', ''),
-                    'ENDPRDGDENM': data.get('endprdGdsNm', ''),
-                    'MTPCKSEQNO': data.get('mtpckSeqno'),
-                    'GDSMTNO': data.get('mtpckGdsMtno', ''),
-                    'MTPCKGDECD': data.get('mtpckGdecd', ''),
-                    'MTPCKGDSNM': data.get('mtpckGdsNm', ''),
-                    'UCNSVERNO': data.get('ucnsVerno', ''),
-                    'UCNSQTY': data.get('ucnsQty', ''),
-                    'NETUSEUPQTY': data.get('netUseupQty', ''),
-                    'TGBLLOSSRATE': data.get('tgblLossRate', ''),
-                    'INTGBLOSSRATE': data.get('intgbLossRate', ''),
-                    'UCNSDCLSTUCD': data.get('ucnsDclStucd', ''),
-                    'BONDMTPCKPRPR': data.get('bondMtpckPrpr', ''),
-                    'MODFMARKCD': data.get('modfMarkcd', ''),
-                    'ETPSEXEMARKCD': data.get('etpsExeMarkcd', ''),
-                }
-                _d = copy.deepcopy(d)
-                for k in _d:
-                    if _d[k]:
-                        pass
-                    else:
-                        d.pop(k)
-                self.sql.insert('NptsEmlConsumeType', **d)
-                log.info('手册号{}已更新单损耗序号：{}'.format(nptsno, data['gseqNo']))
+                self.update_db_cm(data, nptsno)
                 if 1 == int(data['gseqNo']):
                     ret = True
         return ret
 
-    @error_2_send_email
     def update_cmlist_db(self, gSeqno, response_dict, nptsno):
         ret = False
         for data in response_dict['rows']:
             if int(data['gseqNo']) > gSeqno:
-                d = {
-                    'SEQNO': data.get('seqNo'),
-                    'GSEQNO': data.get('gseqNo'),
-                    'ENDPRDSEQNO': data.get('endprdSeqno'),
-                    'ENDPRDGDSMTNO': data.get('endprdGdsMtno', ''),
-                    'ENDPRDGDECD': data.get('endprdGdecd', ''),
-                    'ENDPRDGDENM': data.get('endprdGdsNm', ''),
-                    'MTPCKSEQNO': data.get('mtpckSeqno'),
-                    'GDSMTNO': data.get('mtpckGdsMtno', ''),
-                    'MTPCKGDECD': data.get('mtpckGdecd', ''),
-                    'MTPCKGDSNM': data.get('mtpckGdsNm', ''),
-                    'UCNSVERNO': data.get('ucnsVerno', ''),
-                    'UCNSQTY': data.get('ucnsQty', ''),
-                    'NETUSEUPQTY': data.get('netUseupQty', ''),
-                    'TGBLLOSSRATE': data.get('tgblLossRate', ''),
-                    'INTGBLOSSRATE': data.get('intgbLossRate', ''),
-                    'UCNSDCLSTUCD': data.get('ucnsDclStucd', ''),
-                    'BONDMTPCKPRPR': data.get('bondMtpckPrpr', ''),
-                    'MODFMARKCD': data.get('modfMarkcd', ''),
-                    'ETPSEXEMARKCD': data.get('etpsExeMarkcd', ''),
-                }
-                _d = copy.deepcopy(d)
-                for k in _d:
-                    if _d[k]:
-                        pass
-                    else:
-                        d.pop(k)
-                self.sql.insert('NptsEmlConsumeType', **d)
-                log.info('手册号{}已更新单损耗序号：{}'.format(nptsno, data['gseqNo']))
+                self.update_db_cm(data, nptsno)
                 if 1 == int(data['gseqNo']):
                     ret = True
             else:
@@ -417,64 +374,93 @@ class NptsSpider(BaseCls):
         return ret
 
     @error_2_send_email
+    def update_db_img(self, data, nptsno):
+        d = {
+            'SEQNO': data.get('seqNo', ''),
+            'GDSSEQNO': data.get('gdsSeqno'),
+            'GDSMTNO': data.get('gdsMtno', ''),
+            'GDECD': data.get('gdecd', ''),
+            'GDSNM': data.get('gdsNm', ''),
+            'ENDPRDGDSSPCFMODELDESC': data.get('endprdGdsSpcfModelDesc', ''),
+            'DCLUNITCD': data.get('dclUnitcd', ''),
+            'LAWFUNITCD': data.get('lawfUnitcd', ''),
+            'DCLUPRC': data.get('dclUprcAmt', ''),
+            'DCLCURRCD': data.get('dclCurrcd', ''),
+            'DCLQTY': data.get('dclQty', ''),
+            'DCLTOTALPRC': data.get('dclTotalAmt', ''),
+            'PRMKTNATCD': data.get('natcd', ''),
+            'LVYRLFMODECD': data.get('lvyrlfModecd', ''),
+            'ADTMTRMARKCD': data.get('adjmtrMarkcd', ''),
+            'MODFMARKCD': data.get('modfMarkcd', ''),
+        }
+        _d = copy.deepcopy(d)
+        for k in _d:
+            if _d[k]:
+                pass
+            else:
+                d.pop(k)
+        self.sql.insert('NptsEmlImgType', **d)
+        log.info('手册号{}已更新料件序号：{}'.format(nptsno, data['gdsSeqno']))
+
     def update_imglist_db(self, gdsSeqno, response_dict, nptsno):
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsSeqno']) > gdsSeqno:
-                d = {
-                    'SEQNO': data.get('seqNo', ''),
-                    'GDSSEQNO': data.get('gdsSeqno'),
-                    'GDSMTNO': data.get('gdsMtno', ''),
-                    'GDECD': data.get('gdecd', ''),
-                    'GDSNM': data.get('gdsNm', ''),
-                    'ENDPRDGDSSPCFMODELDESC': data.get('endprdGdsSpcfModelDesc', ''),
-                    'DCLUNITCD': data.get('dclUnitcd', ''),
-                    'LAWFUNITCD': data.get('lawfUnitcd', ''),
-                    'DCLUPRC': data.get('dclUprcAmt', ''),
-                    'DCLCURRCD': data.get('dclCurrcd', ''),
-                    'DCLQTY': data.get('dclQty', ''),
-                    'DCLTOTALPRC': data.get('dclTotalAmt', ''),
-                    'PRMKTNATCD': data.get('natcd', ''),
-                    'LVYRLFMODECD': data.get('lvyrlfModecd', ''),
-                    'ADTMTRMARKCD': data.get('adjmtrMarkcd', ''),
-                    'MODFMARKCD': data.get('modfMarkcd', ''),
-                }
-                _d = copy.deepcopy(d)
-                for k in _d:
-                    if _d[k]:
-                        pass
-                    else:
-                        d.pop(k)
-                self.sql.insert('NptsEmlImgType', **d)
-                log.info('手册号{}已更新料件序号：{}'.format(nptsno, data['gdsSeqno']))
+                self.update_db_img(data, nptsno)
                 if 1 == int(data['gdsSeqno']):
                     ret = True
             else:
                 ret = True
         return ret
 
+    def re_update_imglist_db(self, gdsSeqno, response_dict, nptsno):
+        ret = False
+        for data in response_dict['rows']:
+            if int(data['gdsSeqno']) < gdsSeqno:
+                self.update_db_img(data, nptsno)
+                if 1 == int(data['gdsSeqno']):
+                    ret = True
+        return ret
+
     @error_2_send_email
     def update_npts_img_list_info(self, nptsno, seqNo):
         """更新料件表"""
-        gdsSeqno = self.get_local_db_max_gdsseqno('NptsEmlImgType', seqNo)
-        if gdsSeqno is None:
-            gdsSeqno = 0
+        has_breakpoint = False
+        max_gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlImgType', seqNo)
+        min_gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlImgType', seqNo, max=False)
+        if max_gdsSeqno is None:
+            max_gdsSeqno = 0
+        else:
+            if min_gdsSeqno > 1:
+                has_breakpoint = True
         page = 0
         while True:
             page += 1
             response_dict = self.get_npts_img_list_info(page, seqNo)
-            if self.update_imglist_db(gdsSeqno, response_dict, nptsno):
-                _gdsSeqno = self.get_local_db_max_gdsseqno('NptsEmlImgType', seqNo)
-                if _gdsSeqno and _gdsSeqno > gdsSeqno:
-                    log.info('手册号{}的料件序号已更新至 {}'.format(nptsno, _gdsSeqno))
+            if has_breakpoint:
+                if self.update_imglist_db(min_gdsSeqno, response_dict, nptsno):
+                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlImgType', seqNo, max=False)
+                    if 1 == _gdsSeqno:
+                        log.info('手册号{}的料件序号已更新至 {}'.format(nptsno, _gdsSeqno))
+                        return
                 else:
-                    log.info('海关今日暂未更新手册号为{}的料件..'.format(nptsno))
-                return
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新手册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
             else:
-                wait_time = random.randint(5, 10)
-                log.info('海关今日更新手册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
-                time.sleep(wait_time)
-                continue
+                if self.update_imglist_db(max_gdsSeqno, response_dict, nptsno):
+                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlImgType', seqNo)
+                    if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
+                        log.info('手册号{}的料件序号已更新至 {}'.format(nptsno, _gdsSeqno))
+                    else:
+                        log.info('海关今日暂未更新手册号为{}的料件..'.format(nptsno))
+                    return
+                else:
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新手册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
 
     def get_npts_cm_list_info(self, page, seqNo):
         """料件"""
@@ -520,29 +506,6 @@ class NptsSpider(BaseCls):
         http_res = self.session.post(self.RealUrl3, data=json.dumps(data), timeout=20)
         print("http_res.text = ", http_res.text)
         return json.loads(http_res.text)
-
-    @error_2_send_email
-    def re_update_npts_img_list_db(self, nptsno, seqNo):
-        """中断后继续更新"""
-        gdsSeqno = self.get_local_db_min_gdsseqno('NptsEmlImgType', seqNo)
-        if gdsSeqno is None:
-            gdsSeqno = 0
-        page = 0
-        while True:
-            page += 1
-            response_dict = self.get_npts_img_list_info(page, seqNo)
-            if self.re_update_imglist_db(gdsSeqno, response_dict):
-                _gdsSeqno = self.get_local_db_min_gdsseqno('NptsEmlImgType', seqNo)
-                if _gdsSeqno and _gdsSeqno < gdsSeqno:
-                    log.info('手册号{}的料件序号已更新至 {}'.format(nptsno, _gdsSeqno))
-                else:
-                    log.info('海关今日暂未更新手册号为{}的料件..'.format(nptsno))
-                return
-            else:
-                wait_time = random.randint(5, 10)
-                log.info('海关今日更新手册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
-                time.sleep(wait_time)
-                continue
 
     @error_2_send_email
     def get_npts_exg_list_info(self, page, seqNo):

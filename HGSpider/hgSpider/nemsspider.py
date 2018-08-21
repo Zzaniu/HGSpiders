@@ -46,73 +46,187 @@ class NemsSpider(BaseCls):
         self.save_cookie()
         return self.session.cookies.get_dict()
 
-    @error_2_send_email
-    def update_nems_cm_list_db(self, gdsSeqno, response_dict):
-        """更新单耗表体"""
-        pass
+    def update_nems_cm_list_info(self, nemsno, seqNo):
+        """更新单损耗表"""
+        has_breakpoint = False
+        max_gSeqno = self.get_local_db_max_or_min_gseqno('NemsCmList', seqNo)
+        min_gSeqno = self.get_local_db_max_or_min_gseqno('NemsCmList', seqNo, max=False)
+        if max_gSeqno is None:
+            max_gSeqno = 0
+        else:
+            if min_gSeqno > 1:
+                has_breakpoint = True
+        page = 0
+        while True:
+            page += 1
+            response_dict = self.get_nems_cm_list_info(page, seqNo)
+            if has_breakpoint:
+                if self.re_update_cmlist_db(min_gSeqno, response_dict, nemsno):
+                    _gSeqno = self.get_local_db_max_or_min_gseqno('NemsCmList', seqNo, max=False)
+                    if 1 == _gSeqno:
+                        log.info('账册号{}的单损耗序号已更新至 {}'.format(nemsno, _gSeqno))
+                        return
+                else:
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新账册号{}的单损耗序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
+            else:
+                if self.update_cmlist_db(max_gSeqno, response_dict, nemsno):
+                    _gSeqno = self.get_local_db_max_or_min_gseqno('NemsCmList', seqNo)
+                    if _gSeqno and _gSeqno > max_gSeqno:
+                        log.info('账册号{}的单损耗序号已更新至 {}'.format(nemsno, _gSeqno))
+                    else:
+                        log.info('海关今日暂未更新账册号为{}的单损耗信息..'.format(nemsno))
+                    return
+                else:
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新账册号{}的单损耗序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
 
     @error_2_send_email
+    def update_db_cm(self, data, nemsno):
+        d = {
+            'SEQNO': data.get('seqNo', ''),
+            'GSEQNO': data.get('gseqno'),  # 序号
+            'ENDPRDSEQNO': data.get('endprdseqno'),  # 成品序号
+            'ENDPRDGDSMTNO': data.get('endprdgdsmtno', ''),  # 成品料号
+            'ENDPRDGDECD': data.get('endprdgdecd', ''),  # 成品商品编码
+            'ENDPRDGDSNM': data.get('endprdgdsnm', ''),  # 成品商品名称
+            'MTPCKSEQNO': data.get('mtpckseqno'),  # 料件序号
+            'GDSMTNO': data.get('mtpckgdsmtno', ''),  # 料件料号
+            'MTPCKGDECD': data.get('mtpckgdecd', ''),  # 料件商品编码
+            'MTPCKGDSNM': data.get('mtpckgdsnm', ''),  # 料件商品名称
+            'UCNSVERNO': data.get('ucnsverno', ''),  # 单耗版本号
+            'UCNSQTY': data.get('ucnsqty', ''),  # 单耗
+            'NETUSEUPQTY': data.get('netuseupqty', ''),  # 净耗
+            'TGBLLOSSRATE': data.get('tgbllossrate', ''),  # 有形损耗
+            'INTGBLOSSRATE': data.get('intgblossrate', ''),  # 无形损耗
+            'UCNSDCLSTUCD': data.get('ucnsdclstucd', ''),  # 单耗申报状态
+            'BONDMTPCKPRPR': data.get('bondmtpckprpr', ''),  # 保税料件比例
+            'MODFMARKCD': data.get('modfmarkcd', ''),  # 修改标志
+            'VALIDDATE': data.get('validdate', ''),  # 单耗有效期
+        }
+        _d = copy.deepcopy(d)
+        for k in _d:
+            if _d[k]:
+                pass
+            else:
+                d.pop(k)
+        self.sql.insert('NemsCmList', **d)
+        log.info('账册号{}已更新单损耗序号：{}'.format(nemsno, data['gseqno']))
+
+    def update_cmlist_db(self, gSeqno, response_dict, nemsno):
+        """更新单耗表体"""
+        ret = False
+        for data in response_dict['rows']:
+            if int(data['gseqno']) > gSeqno:
+                self.update_db_cm(data, nemsno)
+                if 1 == int(data['gseqno']):
+                    ret = True
+            else:
+                ret = True
+        return ret
+
+    def re_update_cmlist_db(self, gSeqno, response_dict, nemsno):
+        """更新单耗表体"""
+        ret = False
+        for data in response_dict['rows']:
+            if int(data['gseqno']) < gSeqno:
+                self.update_db_cm(data, nemsno)
+                if 1 == int(data['gseqno']):
+                    ret = True
+        return ret
+
     def update_nems_exg_list_info(self, nemsno, seqNo):
-        gdsSeqno = self.get_local_db_max_gdsseqno('NemsExgList', seqNo)
-        if gdsSeqno is None:
-            gdsSeqno = 0
+        has_breakpoint = False
+        max_gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsExgList', seqNo)
+        min_gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsExgList', seqNo, max=False)
+        if max_gdsSeqno is None:
+            max_gdsSeqno = 0
+        else:
+            if min_gdsSeqno > 1:
+                has_breakpoint = True
         page = 0
         while True:
             page += 1
             response_dict = self.get_nems_exg_list_info(page, seqNo)
-            if self.update_exglist_db(gdsSeqno, response_dict):
-                _gdsSeqno = self.get_local_db_max_gdsseqno('NemsExgList', seqNo)
-                if _gdsSeqno and _gdsSeqno > gdsSeqno:
-                    log.info('账册号{}的成品序号已更新至 {}'.format(nemsno, _gdsSeqno))
+            if has_breakpoint:
+                if self.re_update_exglist_db(min_gdsSeqno, response_dict, nemsno):
+                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsExgList', seqNo, max=False)
+                    if 1 == _gdsSeqno:
+                        log.info('账册号{}的成品序号已更新至 {}'.format(nemsno, _gdsSeqno))
+                        return
                 else:
-                    log.info('海关今日暂未更新账册号为{}的成品..'.format(nemsno))
-                return
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新账册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
             else:
-                wait_time = random.randint(5, 10)
-                log.info('海关今日更新账册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
-                time.sleep(wait_time)
-                continue
+                if self.update_exglist_db(max_gdsSeqno, response_dict, nemsno):
+                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsExgList', seqNo)
+                    if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
+                        log.info('账册号{}的成品序号已更新至 {}'.format(nemsno, _gdsSeqno))
+                    else:
+                        log.info('海关今日暂未更新账册号为{}的成品信息..'.format(nemsno))
+                    return
+                else:
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新账册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
 
     @error_2_send_email
-    def update_exglist_db(self, gdsSeqno, response_dict):
+    def update_db_exg(self, data, nemsno):
+        d = {
+            'SEQNO': data.get('seqNo', ''),
+            'GDSSEQNO': data.get('gdsseqno'),  # 序号
+            'GDSMTNO': data.get('gdsmtno', ''),  # 料号
+            'GDECD': data.get('gdecd', ''),  # 商品编码
+            'GDSNM': data.get('gdsNm', ''),  # 商品名称
+            'ENDPRDGDSSPCFMODELDESC': data.get('endprdgdsspcfmodeldesc', ''),  # 规格型号
+            'DCLUNITCD': data.get('dclunitcd', ''),  # 申报计量单位
+            'LAWFUNITCD': data.get('lawfunitcd', ''),  # 法定计量单位
+            'SECDLAWFUNITCD': '',  # 法定第二计量单位
+            'DCLUPRC': data.get('dcluprcamt', ''),  # 申报单价
+            'DCLCURRCD': data.get('dclcurrcd', ''),  # 币制
+            'DCLQTY': data.get('dclqty', ''),  # 申报数量
+            'LVYRLFMODECD': data.get('lvyrlfmodecd', ''),  # 征免方式
+            'QTYCNTRMARKCD': data.get('qtycntrmarkcd', ''),  # 数量控制标记代码
+            'ETPSEXEMARKCD': data.get('etpsexemarkcd', ''),  # 企业执行标记代码
+            'MODFMARKCD': data.get('modfmarkcd', ''),  # 修改标志代码
+            'CUSMEXEMARKCD': data.get('cusmexemarkcd', ''),  # 海关执行标志
+            'UCNSTQSNFLAG': data.get('ucnstqsnflag', ''),  # 单耗质疑标志
+            'CSTTNFLAG': data.get('csttnflag', ''),  # 磋商标志
+        }
+        _d = copy.deepcopy(d)
+        for k in _d:
+            if _d[k]:
+                pass
+            else:
+                d.pop(k)
+        self.sql.insert('NemsExgList', **d)
+        log.info('账册号{}已更新成品序号：{}'.format(nemsno, data['gdsseqno']))
+
+    def update_exglist_db(self, gdsSeqno, response_dict, nemsno):
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsseqno']) > gdsSeqno:
-                d = {
-                    'SEQNO': data.get('seqNo', ''),
-                    'GDSSEQNO': data.get('gdsseqno'),
-                    'GDSMTNO': data.get('gdsmtno', ''),
-                    'GDECD': data.get('gdecd', ''),
-                    'GDSNM': data.get('gdsNm', ''),
-                    'ENDPRDGDSSPCFMODELDESC': data.get('endprdgdsspcfmodeldesc', ''),
-                    'DCLUNITCD': data.get('dclunitcd', ''),
-                    'LAWFUNITCD': data.get('lawfunitcd', ''),
-                    'DCLUPRC': data.get('dcluprcamt', ''),
-                    'DCLCURRCD': data.get('dclcurrcd', ''),
-                    'DCLQTY': data.get('dclqty', ''),
-                    'LVYRLFMODECD': data.get('lvyrlfmodecd', ''),
-                    'ETPSEXEMARKCD': data.get('etpsexemarkcd', ''),
-                    'MODFMARKCD': data.get('modfmarkcd', ''),
-                    'VCLRPRIDINITQTY': data.get('vclrpridinitqty', ''),
-                    'APPRMAXSURPQTY': data.get('apprmaxsurpqty', ''),
-                    'QTYCNTRMARKCD': data.get('qtycntrmarkcd', ''),
-                    'INDBTIME': data.get('indbtime', ''),
-                    'CSTTNFLAG': data.get('csttnflag', ''),
-                    'UCNSTQSNFLAG': data.get('ucnstqsnflag', ''),
-                    'APPRMAXSURPQTY': data.get('apprmaxsurpqty', ''),
-                }
-                _d = copy.deepcopy(d)
-                for k in _d:
-                    if _d[k]:
-                        pass
-                    else:
-                        d.pop(k)
-                self.sql.insert('NemsExgList', **d)
-                log.info('已更新成品序号：{}'.format(data['gdsseqno']))
+                self.update_db_exg(data, nemsno)
                 if 1 == int(data['gdsseqno']):
                     ret = True
             else:
                 ret = True
+        return ret
+
+    def re_update_exglist_db(self, gdsSeqno, response_dict, nemsno):
+        ret = False
+        for data in response_dict['rows']:
+            if int(data['gdsseqno']) < gdsSeqno:
+                self.update_db_exg(data, nemsno)
+                if 1 == int(data['gdsseqno']):
+                    ret = True
         return ret
 
     @error_2_send_email
@@ -230,116 +344,119 @@ class NemsSpider(BaseCls):
             log.error('账册号{}插入表头信息失败，请检查..'.format(nemsno))
             raise Exception('账册号{}插入表头信息失败，请检查..'.format(nemsno))
 
-    def get_local_db_max_gdsseqno(self, tabname, seqNo):
-        _sql = 'SELECT max(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
+    @error_2_send_email
+    def get_local_db_max_or_min_gdsseqno(self, tabname, seqNo, max=True):
+        if max:
+            _sql = 'SELECT max(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
+        else:
+            _sql = 'SELECT min(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
         ret = self.sql.raw_sql(_sql)
         if ret.get('status'):
             gdsSeqno = ret['ret_tuples'][0][0]
             return gdsSeqno
 
-    def get_local_db_min_gdsseqno(self, tabname, seqNo):
-        _sql = 'SELECT min(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
+    @error_2_send_email
+    def get_local_db_max_or_min_gseqno(self, tabname, seqNo, max=True):
+        if max:
+            _sql = 'SELECT max(GSEQNO) as gsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
+        else:
+            _sql = 'SELECT min(GSEQNO) as gsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
         ret = self.sql.raw_sql(_sql)
         if ret.get('status'):
-            gdsSeqno = ret['ret_tuples'][0][0]
-            return gdsSeqno
+            gsSeqno = ret['ret_tuples'][0][0]
+            return gsSeqno
 
-    def re_update_imglist_db(self, gdsSeqno, response_dict):
+    @error_2_send_email
+    def update_db_img(self, data, nemsno):
+        d = {
+            'SEQNO': data.get('seqNo', ''),
+            'GDSSEQNO': data.get('gdsseqno'),
+            'GDSMTNO': data.get('gdsmtno', ''),
+            'GDECD': data.get('gdecd', ''),
+            'GDSNM': data.get('gdsNm', ''),
+            'ENDPRDGDSSPCFMODELDESC': data.get('endprdgdsspcfmodeldesc', ''),
+            'DCLUNITCD': data.get('dclunitcd', ''),
+            'LAWFUNITCD': data.get('lawfunitcd', ''),
+            'DCLUPRC': data.get('dcluprcamt', ''),
+            'DCLCURRCD': data.get('dclcurrcd', ''),
+            'DCLQTY': data.get('dclqty', ''),
+            'LVYRLFMODECD': data.get('lvyrlfmodecd', ''),
+            'ADJMTRMARKCD': data.get('adjmtrmarkcd', ''),
+            'ETPSEXEMARKCD': data.get('etpsexemarkcd', ''),
+            'MODFMARKCD': data.get('modfmarkcd', ''),
+            'VCLRPRIDINITQTY': data.get('vclrpridinitqty', ''),
+            'APPRMAXSURPQTY': data.get('apprmaxsurpqty', ''),
+        }
+        _d = copy.deepcopy(d)
+        for k in _d:
+            if _d[k]:
+                pass
+            else:
+                d.pop(k)
+        self.sql.insert('NemsImgList', **d)
+        log.info('账册号{}已更新料件序号：{}'.format(nemsno, data['gdsseqno']))
+
+    def re_update_imglist_db(self, gdsSeqno, response_dict, nemsno):
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsseqno']) < gdsSeqno:
-                d = {
-                    'SEQNO': data.get('seqNo', ''),
-                    'GDSSEQNO': data.get('gdsseqno'),
-                    'GDSMTNO': data.get('gdsmtno', ''),
-                    'GDECD': data.get('gdecd', ''),
-                    'GDSNM': data.get('gdsNm', ''),
-                    'ENDPRDGDSSPCFMODELDESC': data.get('endprdgdsspcfmodeldesc', ''),
-                    'DCLUNITCD': data.get('dclunitcd', ''),
-                    'LAWFUNITCD': data.get('lawfunitcd', ''),
-                    'DCLUPRC': data.get('dcluprcamt', ''),
-                    'DCLCURRCD': data.get('dclcurrcd', ''),
-                    'DCLQTY': data.get('dclqty', ''),
-                    'LVYRLFMODECD': data.get('lvyrlfmodecd', ''),
-                    'ADJMTRMARKCD': data.get('adjmtrmarkcd', ''),
-                    'ETPSEXEMARKCD': data.get('etpsexemarkcd', ''),
-                    'MODFMARKCD': data.get('modfmarkcd', ''),
-                    'VCLRPRIDINITQTY': data.get('vclrpridinitqty', ''),
-                    'APPRMAXSURPQTY': data.get('apprmaxsurpqty', ''),
-                }
-                _d = copy.deepcopy(d)
-                for k in _d:
-                    if _d[k]:
-                        pass
-                    else:
-                        d.pop(k)
-                self.sql.insert('NemsImgList', **d)
-                log.info('已更新料件序号：{}'.format(data['gdsseqno']))
+                self.update_db_img(data, nemsno)
                 if 1 == int(data['gdsseqno']):
                     ret = True
         return ret
 
     @error_2_send_email
-    def update_imglist_db(self, gdsSeqno, response_dict):
+    def update_imglist_db(self, gdsSeqno, response_dict, nemsno):
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsseqno']) > gdsSeqno:
-                d = {
-                    'SEQNO': data.get('seqNo', ''),
-                    'GDSSEQNO': data.get('gdsseqno'),
-                    'GDSMTNO': data.get('gdsmtno', ''),
-                    'GDECD': data.get('gdecd', ''),
-                    'GDSNM': data.get('gdsNm', ''),
-                    'ENDPRDGDSSPCFMODELDESC': data.get('endprdgdsspcfmodeldesc', ''),
-                    'DCLUNITCD': data.get('dclunitcd', ''),
-                    'LAWFUNITCD': data.get('lawfunitcd', ''),
-                    'DCLUPRC': data.get('dcluprcamt', ''),
-                    'DCLCURRCD': data.get('dclcurrcd', ''),
-                    'DCLQTY': data.get('dclqty', ''),
-                    'LVYRLFMODECD': data.get('lvyrlfmodecd', ''),
-                    'ADJMTRMARKCD': data.get('adjmtrmarkcd', ''),
-                    'ETPSEXEMARKCD': data.get('etpsexemarkcd', ''),
-                    'MODFMARKCD': data.get('modfmarkcd', ''),
-                    'VCLRPRIDINITQTY': data.get('vclrpridinitqty', ''),
-                    'APPRMAXSURPQTY': data.get('apprmaxsurpqty', ''),
-                }
-                _d = copy.deepcopy(d)
-                for k in _d:
-                    if _d[k]:
-                        pass
-                    else:
-                        d.pop(k)
-                self.sql.insert('NemsImgList', **d)
-                log.info('已更新料件序号：{}'.format(data['gdsseqno']))
+                self.update_db_img(data, nemsno)
                 if 1 == int(data['gdsseqno']):
                     ret = True
             else:
                 ret = True
         return ret
 
-    @error_2_send_email
     def update_nems_img_list_info(self, nemsno, seqNo):
         """更新料件表"""
-        gdsSeqno = self.get_local_db_max_gdsseqno('NemsImgList', seqNo)
-        if gdsSeqno is None:
-            gdsSeqno = 0
+        has_breakpoint = False
+        max_gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsImgList', seqNo)
+        min_gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsImgList', seqNo, max=False)
+        if max_gdsSeqno is None:
+            max_gdsSeqno = 0
+        else:
+            if min_gdsSeqno > 1:
+                has_breakpoint = True
         page = 0
         while True:
             page += 1
             response_dict = self.get_nems_img_list_info(page, seqNo)
-            if self.update_imglist_db(gdsSeqno, response_dict):
-                _gdsSeqno = self.get_local_db_max_gdsseqno('NemsImgList', seqNo)
-                if _gdsSeqno and _gdsSeqno > gdsSeqno:
-                    log.info('账册号{}的料件序号已更新至 {}'.format(nemsno, _gdsSeqno))
+            if has_breakpoint:
+                if self.re_update_imglist_db(min_gdsSeqno, response_dict, nemsno):
+                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsImgList', seqNo, max=False)
+                    if 1 == _gdsSeqno:
+                        log.info('账册号{}的料件序号已更新至 {}'.format(nemsno, _gdsSeqno))
+                        return
                 else:
-                    log.info('海关今日暂未更新账册号为{}的料件..'.format(nemsno))
-                return
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新账册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
             else:
-                wait_time = random.randint(5, 10)
-                log.info('海关今日更新账册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
-                time.sleep(wait_time)
-                continue
+                if self.update_imglist_db(max_gdsSeqno, response_dict, nemsno):
+                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsImgList', seqNo)
+                    if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
+                        log.info('账册号{}的料件序号已更新至 {}'.format(nemsno, _gdsSeqno))
+                    else:
+                        log.info('海关今日暂未更新账册号为{}的料件..'.format(nemsno))
+                    return
+                else:
+                    wait_time = random.randint(5, 10)
+                    log.info('海关今日更新账册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                    time.sleep(wait_time)
+                    continue
 
+    @error_2_send_email
     def get_nems_img_list_info(self, page, seqNo):
         """料件"""
         url = 'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/atb/emsGoodsQueryService'
@@ -370,28 +487,27 @@ class NemsSpider(BaseCls):
         http_res = self.session.post(url, data=json.dumps(data), timeout=20)
         return json.loads(http_res.text)
 
-    @error_2_send_email
-    def re_update_ems_img_list_db(self, nemsno, seqNo):
-        """中断后继续更新"""
-        gdsSeqno = self.get_local_db_min_gdsseqno('NemsImgList', seqNo)
-        if gdsSeqno is None:
-            gdsSeqno = 0
-        page = 324
-        while True:
-            page += 1
-            response_dict = self.get_nems_img_list_info(page, seqNo)
-            if self.re_update_imglist_db(gdsSeqno, response_dict):
-                _gdsSeqno = self.get_local_db_min_gdsseqno('NemsImgList', seqNo)
-                if _gdsSeqno and _gdsSeqno < gdsSeqno:
-                    log.info('账册号{}的料件序号已更新至 {}'.format(nemsno, _gdsSeqno))
-                else:
-                    log.info('海关今日暂未更新账册号为{}的料件..'.format(nemsno))
-                return
-            else:
-                wait_time = random.randint(5, 10)
-                log.info('海关今日更新账册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
-                time.sleep(wait_time)
-                continue
+    def get_nems_cm_list_info(self, page, seqNo):
+        """单损耗"""
+        url = 'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/atb/emsGoodsQueryService'
+        headers = {
+            "Host": "sz.singlewindow.cn",
+            "Connection": "keep-alive",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Origin": "http://sz.singlewindow.cn",
+            "X-Requested-With": "XMLHttpRequest",
+            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
+            "Content-Type": "application/json",
+            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/".format(
+                seqNo),
+            "Accept-Language": "zh-CN,zh;q=0.9",
+        }
+        data = {"exgGNo": "", "imgGNo": "", "exgVersion": "", "page": {"curPage": page, "pageSize": 50},
+                "operType": "0", "seqNO": seqNo, "queryType": "Cm"}
+        self.session.headers.update(headers)
+        self.session.cookies.update(self.get_cookie())
+        http_res = self.session.post(url, data=json.dumps(data), timeout=20)
+        return json.loads(http_res.text)
 
     @error_2_send_email
     def get_nems_exg_list_info(self, page, seqNo):
@@ -423,9 +539,13 @@ class NemsSpider(BaseCls):
                 self.get_nems_info(i, seqNo)
 
     def get_nems_info(self, nemsno, seqNo):
+        """这里可以考虑做成多线程，主要是怕把海关搞挂了，对性能也没有要求，就先单线程跑着吧"""
         self.update_nems_head_db(nemsno, seqNo)
-        if "201800000000002605" == seqNo:
-            self.re_update_ems_img_list_db(nemsno, seqNo)
-        else:
-            self.update_nems_img_list_info(nemsno, seqNo)
+        self.update_nems_img_list_info(nemsno, seqNo)
         self.update_nems_exg_list_info(nemsno, seqNo)
+        self.update_nems_cm_list_info(nemsno, seqNo)
+
+
+if __name__ == "__main__":
+    nems_obj = NemsSpider()
+    nems_obj.get_info()

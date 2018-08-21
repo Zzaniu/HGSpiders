@@ -27,12 +27,11 @@ def runNemsSpider():
 if __name__ == "__main__":
     t1 = Process(target=runBwlSpider)
     t2 = Process(target=runNptsSpider)
-    # t3 = Process(target=runNemsSpider)
-    
-    threads = [t2]
-    
+    t3 = Process(target=runNemsSpider)
+    threads = [t1, t2, t3]
     for i in threads:
         i.start()
-    
+
     for i in threads:
         i.join()
+    print('程序执行完毕...')
