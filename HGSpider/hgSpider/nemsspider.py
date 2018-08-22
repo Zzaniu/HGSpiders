@@ -184,7 +184,7 @@ class NemsSpider(BaseCls):
             'GDSSEQNO': data.get('gdsseqno'),  # 序号
             'GDSMTNO': data.get('gdsmtno', ''),  # 料号
             'GDECD': data.get('gdecd', ''),  # 商品编码
-            'GDSNM': data.get('gdsNm', ''),  # 商品名称
+            'GDSNM': data.get('gdsnm', ''),  # 商品名称
             'ENDPRDGDSSPCFMODELDESC': data.get('endprdgdsspcfmodeldesc', ''),  # 规格型号
             'DCLUNITCD': data.get('dclunitcd', ''),  # 申报计量单位
             'LAWFUNITCD': data.get('lawfunitcd', ''),  # 法定计量单位
