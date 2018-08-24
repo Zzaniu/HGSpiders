@@ -392,6 +392,7 @@ class NptsSpider(BaseCls):
             'LVYRLFMODECD': data.get('lvyrlfModecd', ''),
             'ADTMTRMARKCD': data.get('adjmtrMarkcd', ''),
             'MODFMARKCD': data.get('modfMarkcd', ''),
+            'CUSMEXEMARKCD': data.get('cusmExeMarkcd', ''),
         }
         _d = copy.deepcopy(d)
         for k in _d:

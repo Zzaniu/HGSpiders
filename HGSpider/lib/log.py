@@ -4,6 +4,7 @@
 # @Author  : zaniu (Zzaniu@126.com)
 # @Version : $Id$
 ###这里我是采用的单例模式，可以考虑直接用import,因为import也是单例模式###
+# 需要安装concurrent_log_handler  pip install concurrent_log_handler
 import os
 import logging
 import logging.config
