@@ -9,17 +9,20 @@ import os
 import logging
 import logging.config
 from conf import settings
+import threading
 import functools
 
 
 def singleton(func):
     """单例装饰器函数"""
     data = {'obj': None}
+    _lock = threading.Lock()
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if data.get('obj') is None:
-            data['obj'] = func(*args, **kwargs)
+        with _lock:
+            if data.get('obj') is None:
+                data['obj'] = func(*args, **kwargs)
         return data['obj']
 
     return wrapper
