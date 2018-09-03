@@ -12,6 +12,12 @@ from lib.log import getSpiderLogger, singleton
 log = getSpiderLogger()
 
 
+@singleton
+class singletonPoolDB(PooledDB):
+    """单例数据库连接池"""
+    pass
+
+
 class Sql(object):
     def __init__(self):
         self.__pool = self.connect_mysql()
@@ -26,7 +32,6 @@ class Sql(object):
             self.conn.close()
 
     @staticmethod
-    @singleton
     def connect_mysql():
         """单例模式，会防止创建多个连接池"""
         times = settings.RE_CONNECT_SQL_TIME
@@ -42,7 +47,7 @@ class Sql(object):
                 'ping': 0,
             }
             try:
-                _pool = PooledDB(pymysql, **d, **settings.DATABASES)
+                _pool = singletonPoolDB(pymysql, **d, **settings.DATABASES)
                 return _pool
             except:
                 log.debug('创建连接池失败，暂停{}S后继续创建'.format(settings.RE_CONNECT_SQL_WAIT_TIME))
