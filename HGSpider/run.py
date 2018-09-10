@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+
 path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(path)
 
@@ -31,6 +33,7 @@ if __name__ == "__main__":
     threads = [t1, t2, t3]
     for i in threads:
         i.start()
+        time.sleep(10)
 
     for i in threads:
         i.join()

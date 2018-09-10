@@ -200,11 +200,11 @@ class Sql(object):
             log.error("error = {}".format(e))
             return False
 
-    def raw_sql(self, _sql):
+    def raw_sql(self, _sql, *args):
         """支持原生SQL"""
         ret = {'status': False, 'ret_tuples': ()}
         try:
-            lines = self.cursor.execute(_sql)
+            lines = self.cursor.execute(_sql, args)
             self.conn.commit()
             if lines:
                 ret['status'] = True

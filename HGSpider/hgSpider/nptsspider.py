@@ -293,9 +293,6 @@ class NptsSpider(BaseCls):
             'CHGTMSCNT': head_obj.get('chgTmsCnt', ''),
             'FTIMEEXP': head_obj.get('ftimeExp', ''),
             'RMK': head_obj.get('rmk', ''),
-            'OWNERETPSSCCD': head_obj.get('rmk', ''),
-            'OWNERETPSNO': head_obj.get('rmk', ''),
-            'OWNERETPSNM': head_obj.get('rmk', ''),
         }
         _d = copy.deepcopy(d)
         for k in _d:
@@ -313,10 +310,10 @@ class NptsSpider(BaseCls):
     @error_2_send_email
     def get_local_db_max_or_min_gdsseqno(self, tabname, seqNo, max=True):
         if max:
-            _sql = 'SELECT max(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
+            _sql = 'SELECT max(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = '.format(tabname) + "%s"
         else:
-            _sql = 'SELECT min(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = {}'.format(tabname, seqNo)
-        ret = self.sql.raw_sql(_sql)
+            _sql = 'SELECT min(GDSSEQNO) as gdsSeqno FROM {} WHERE SEQNO = '.format(tabname) + "%s"
+        ret = self.sql.raw_sql(_sql, seqNo)
         if ret.get('status'):
             gdsSeqno = ret['ret_tuples'][0][0]
             return gdsSeqno

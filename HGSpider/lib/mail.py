@@ -4,25 +4,26 @@ import traceback
 import smtplib
 import email.mime.multipart
 import email.mime.text
+from email.utils import formataddr
+
+from conf.settings import EMAIL_PWD, SEND_EMAIL
 from lib.log import getSpiderLogger
 log = getSpiderLogger()
 
 
-def send_email(text,subject):
+def send_email(text, subject):
     """
     发送邮件
     :param text: 需要发送的字符串
     :param subject: 发邮件的主题
     :return: 
     """
-    from_email = '2673460873@qq.com'
-    password = 'jbdyaaiolwqgdjjf'  # 请注意这里并不是qq邮箱的登录密码,是授权码,授权码是用于登录第三方邮件客户端的专用密码。
     # to_email = 'Michael.song@betterbt.com,zaniu.zeng@betterbt.com'
     to_email = 'zaniu.zeng@betterbt.com'
-    smtp_server = 'smtp.qq.com'
+    smtp_server = 'smtp.126.com'
 
     msg = email.mime.multipart.MIMEMultipart()
-    msg['from'] = from_email
+    msg['from'] = formataddr(['ZzaniuzzZ', SEND_EMAIL])
     msg['to'] = to_email
     msg['subject'] = subject
 
@@ -31,10 +32,10 @@ def send_email(text,subject):
     msg.attach(txt)
 
     try:
-        smtp = smtplib.SMTP_SSL(smtp_server,465)
+        smtp = smtplib.SMTP(smtp_server, 25)
         smtp.set_debuglevel(1)
-        smtp.login(from_email, password)
-        smtp.sendmail(from_email, to_email.split(','), msg.as_string())
+        smtp.login(SEND_EMAIL, EMAIL_PWD)
+        smtp.sendmail(SEND_EMAIL, to_email.split(','), msg.as_string())
         smtp.quit()
     except Exception as e:
         log.exception(e)
@@ -52,3 +53,7 @@ def error_2_send_email(func):
             sys.exit(-1)
 
     return wrapper
+
+
+if __name__ == "__main__":
+    send_email('女朋友约你', subject="女朋友了找你")

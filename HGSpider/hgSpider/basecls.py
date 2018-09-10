@@ -17,6 +17,7 @@ from conf import settings
 from lib.sql import Sql
 from lib.mail import error_2_send_email
 from lib.log import getSpiderLogger
+import multiprocessing
 
 log = getSpiderLogger()
 
@@ -132,14 +133,16 @@ class BaseCls(object):
         log.info("已在目录下生成cookie文件")
 
     def get_cookie(self, LOCAL_COOKIE_FLG=True):
-        if LOCAL_COOKIE_FLG and os.path.exists(self.CookieDir):
-            with open(self.CookieDir, "r") as f:
-                cookie = json.load(f)
-                return cookie
-        else:
-            if os.path.exists(self.CookieDir):
-                os.remove(self.CookieDir)
-            return self.get_web_cookie()
+        """加长锁，为了防止重复登录"""
+        with multiprocessing.Lock():
+            if LOCAL_COOKIE_FLG and os.path.exists(self.CookieDir):
+                with open(self.CookieDir, "r") as f:
+                    cookie = json.load(f)
+                    return cookie
+            else:
+                if os.path.exists(self.CookieDir):
+                    os.remove(self.CookieDir)
+                return self.get_web_cookie()
 
     @error_2_send_email
     def get_web_cookie(self):

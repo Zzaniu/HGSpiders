@@ -26,6 +26,7 @@ class BwlListSpider(BaseCls):
     @error_2_send_email
     def update_bwlist_db(self, gdsSeqno, response_dict):
         ret = False
+        print("response_dict = ", response_dict)
         for data in response_dict['rows']:
             if int(data['gdsSeqNo']) > gdsSeqno:
                 d = {
