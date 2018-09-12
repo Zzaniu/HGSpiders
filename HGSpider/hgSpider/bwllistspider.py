@@ -88,7 +88,7 @@ class BwlListSpider(BaseCls):
             'Referer': 'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/bwl?sysId=Z8&flag=view&seqNo=201800000000006402&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/'
         }
         postdata = {
-            "page": {"curPage": page, "pageSize": 50},
+            "page": {"curPage": page, "pageSize": settings.pageSize},
             "queryType": "B", "operType": "0", "seqNo": "201800000000006402",
         }
         self.session.headers.update(headers)

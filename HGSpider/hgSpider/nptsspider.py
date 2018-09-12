@@ -71,18 +71,22 @@ class NptsSpider(BaseCls):
                     time.sleep(wait_time)
                     continue
             else:
-                if self.update_cmlist_db(max_gSeqno, response_dict, nptsno):
-                    _gSeqno = self.get_local_db_max_or_min_gseqno('NptsEmlConsumeType', seqNo)
-                    if _gSeqno and _gSeqno > max_gSeqno:
-                        log.info('手册号{}的单损耗序号已更新至 {}'.format(nptsno, _gSeqno))
+                try:
+                    if self.update_cmlist_db(max_gSeqno, response_dict, nptsno):
+                        _gSeqno = self.get_local_db_max_or_min_gseqno('NptsEmlConsumeType', seqNo)
+                        if _gSeqno and _gSeqno > max_gSeqno:
+                            log.info('手册号{}的单损耗序号已更新至 {}'.format(nptsno, _gSeqno))
+                        else:
+                            log.info('海关今日暂未更新手册号为{}的单损耗..'.format(nptsno))
+                        return
                     else:
-                        log.info('海关今日暂未更新手册号为{}的单损耗..'.format(nptsno))
+                        wait_time = random.randint(5, 10)
+                        log.info('海关今日更新手册号{}的单损耗序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                        time.sleep(wait_time)
+                        continue
+                except Exception as e:
+                    log.info(str(e))
                     return
-                else:
-                    wait_time = random.randint(5, 10)
-                    log.info('海关今日更新手册号{}的单损耗序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
-                    time.sleep(wait_time)
-                    continue
 
     @error_2_send_email
     def get_local_db_max_or_min_gseqno(self, tabname, seqNo, max=True):
@@ -121,18 +125,22 @@ class NptsSpider(BaseCls):
                     time.sleep(wait_time)
                     continue
             else:
-                if self.update_exglist_db(max_gdsSeqno, response_dict, nptsno):
-                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlExgType', seqNo)
-                    if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
-                        log.info('手册号{}的成品序号已更新至 {}'.format(nptsno, _gdsSeqno))
+                try:
+                    if self.update_exglist_db(max_gdsSeqno, response_dict, nptsno):
+                        _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlExgType', seqNo)
+                        if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
+                            log.info('手册号{}的成品序号已更新至 {}'.format(nptsno, _gdsSeqno))
+                        else:
+                            log.info('海关今日暂未更新手册号为{}的成品..'.format(nptsno))
+                        return
                     else:
-                        log.info('海关今日暂未更新手册号为{}的成品..'.format(nptsno))
+                        wait_time = random.randint(5, 10)
+                        log.info('海关今日更新手册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                        time.sleep(wait_time)
+                        continue
+                except Exception as e:
+                    log.info(str(e))
                     return
-                else:
-                    wait_time = random.randint(5, 10)
-                    log.info('海关今日更新手册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
-                    time.sleep(wait_time)
-                    continue
 
     @error_2_send_email
     def updata_db_exg(self, data, nptsno):
@@ -183,6 +191,8 @@ class NptsSpider(BaseCls):
                 self.updata_db_exg(data, nptsno)
                 if 1 == int(data['gdsSeqno']):
                     ret = True
+        else:
+            raise Exception('海关暂无相关手册成品信息...')
         return ret
 
     @error_2_send_email
@@ -368,6 +378,8 @@ class NptsSpider(BaseCls):
                     ret = True
             else:
                 ret = True
+        else:
+            raise Exception('海关暂无相关手册单损耗信息...')
         return ret
 
     @error_2_send_email
@@ -409,6 +421,8 @@ class NptsSpider(BaseCls):
                     ret = True
             else:
                 ret = True
+        else:
+            raise Exception('海关暂无相关手册料件信息...')
         return ret
 
     def re_update_imglist_db(self, gdsSeqno, response_dict, nptsno):
@@ -447,18 +461,22 @@ class NptsSpider(BaseCls):
                     time.sleep(wait_time)
                     continue
             else:
-                if self.update_imglist_db(max_gdsSeqno, response_dict, nptsno):
-                    _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlImgType', seqNo)
-                    if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
-                        log.info('手册号{}的料件序号已更新至 {}'.format(nptsno, _gdsSeqno))
+                try:
+                    if self.update_imglist_db(max_gdsSeqno, response_dict, nptsno):
+                        _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlImgType', seqNo)
+                        if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
+                            log.info('手册号{}的料件序号已更新至 {}'.format(nptsno, _gdsSeqno))
+                        else:
+                            log.info('海关今日暂未更新手册号为{}的料件..'.format(nptsno))
+                        return
                     else:
-                        log.info('海关今日暂未更新手册号为{}的料件..'.format(nptsno))
+                        wait_time = random.randint(5, 10)
+                        log.info('海关今日更新手册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                        time.sleep(wait_time)
+                        continue
+                except Exception as e:
+                    log.info(str(e))
                     return
-                else:
-                    wait_time = random.randint(5, 10)
-                    log.info('海关今日更新手册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
-                    time.sleep(wait_time)
-                    continue
 
     def get_npts_cm_list_info(self, page, seqNo):
         """料件"""
@@ -474,7 +492,7 @@ class NptsSpider(BaseCls):
                 seqNo),
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        data = {"endprdSeqno": "", "mtpckSeqno": "", "ucnsVerno": "", "page": {"curPage": page, "pageSize": 50},
+        data = {"endprdSeqno": "", "mtpckSeqno": "", "ucnsVerno": "", "page": {"curPage": page, "pageSize": settings.pageSize},
                 "operType": "0", "seqNo": seqNo, "queryType": "Con"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
@@ -497,7 +515,7 @@ class NptsSpider(BaseCls):
             "Accept-Encoding": "gzip, deflate",
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": 50}, "operType": "0",
+        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": settings.pageSize}, "operType": "0",
                 "seqNo": seqNo, "queryType": "Img"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
@@ -521,7 +539,7 @@ class NptsSpider(BaseCls):
                 seqNo),
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": 50}, "operType": "0",
+        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": settings.pageSize}, "operType": "0",
                 "seqNo": seqNo, "queryType": "Exg"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
