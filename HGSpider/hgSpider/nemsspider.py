@@ -122,6 +122,7 @@ class NemsSpider(BaseCls):
         log.info('账册号{}已更新单损耗序号：{}'.format(nemsno, data['gseqno']))
 
     def update_cmlist_db(self, gSeqno, response_dict, nemsno):
+        assert response_dict['rows'], '海关暂无相关账册{}单损耗信息...'.format(nemsno)
         """更新单耗表体"""
         ret = False
         for data in response_dict['rows']:
@@ -131,8 +132,6 @@ class NemsSpider(BaseCls):
                     ret = True
             else:
                 ret = True
-        else:
-            raise Exception('海关暂无相关账册单损耗信息...')
         return ret
 
     def re_update_cmlist_db(self, gSeqno, response_dict, nemsno):
@@ -220,6 +219,7 @@ class NemsSpider(BaseCls):
         log.info('账册号{}已更新成品序号：{}'.format(nemsno, data['gdsseqno']))
 
     def update_exglist_db(self, gdsSeqno, response_dict, nemsno):
+        assert response_dict['rows'], '海关暂无相关账册{}成品数据...'.format(nemsno)
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsseqno']) > gdsSeqno:
@@ -228,8 +228,6 @@ class NemsSpider(BaseCls):
                     ret = True
             else:
                 ret = True
-        else:
-            raise Exception('海关暂无相关账册成品数据...')
         return ret
 
     def re_update_exglist_db(self, gdsSeqno, response_dict, nemsno):
@@ -422,6 +420,7 @@ class NemsSpider(BaseCls):
 
     @error_2_send_email
     def update_imglist_db(self, gdsSeqno, response_dict, nemsno):
+        assert response_dict['rows'], '海关暂无相关账册{}料件信息...'.format(nemsno)
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsseqno']) > gdsSeqno:
@@ -430,8 +429,6 @@ class NemsSpider(BaseCls):
                     ret = True
             else:
                 ret = True
-        else:
-            raise Exception('海关暂无相关账册料件信息...')
         return ret
 
     def update_nems_img_list_info(self, nemsno, seqNo):
@@ -564,9 +561,10 @@ class NemsSpider(BaseCls):
         self.update_nems_head_db(nemsno, seqNo)
         self.update_nems_img_list_info(nemsno, seqNo)
         self.update_nems_exg_list_info(nemsno, seqNo)
-        # self.update_nems_cm_list_info(nemsno, seqNo)
+        self.update_nems_cm_list_info(nemsno, seqNo)
 
 
 if __name__ == "__main__":
     nems_obj = NemsSpider()
-    nems_obj.get_info()
+    for i in nems_obj.get_company_seqno():
+        print('i = ', i)

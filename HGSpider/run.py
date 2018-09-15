@@ -9,11 +9,12 @@ from multiprocessing import Process
 from hgSpider.bwllistspider import BwlListSpider
 from hgSpider.nptsspider import NptsSpider
 from hgSpider.nemsspider import NemsSpider
+from lib.sync_sql import SyncSqlGold
 
 
 def runBwlSpider():
     bwl_obj = BwlListSpider()
-    bwl_obj.update_local_db_info()
+    bwl_obj.get_info()
 
 
 def runNptsSpider():
@@ -26,15 +27,24 @@ def runNemsSpider():
     nems_obj.get_info()
 
 
+def sync_db():
+    obj = SyncSqlGold()
+    obj.run_sync()
+
+
 if __name__ == "__main__":
     t1 = Process(target=runBwlSpider)
     t2 = Process(target=runNptsSpider)
     t3 = Process(target=runNemsSpider)
     threads = [t1, t2, t3]
+    threads = [t1]
     for i in threads:
         i.start()
         time.sleep(10)
 
     for i in threads:
         i.join()
+
+    sync_db()  # 同步数据库
+
     print('程序执行完毕...')

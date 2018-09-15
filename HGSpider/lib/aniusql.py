@@ -3,36 +3,60 @@ import traceback
 
 import pymysql
 import re
+
+from DBUtils.PooledDB import PooledDB
+
 from conf import settings
-from lib.log import getSpiderLogger
+from lib.log import getSpiderLogger, singleton
 
 log = getSpiderLogger()
 
 
+# @singleton
+class SingletonPoolDB(PooledDB):
+    """单例数据库连接池"""
+    pass
+
+
 class Sql(object):
-    def __init__(self):
-        self.conn, self.cursor = self.connect_mysql()
+    def __init__(self, databases):
+        self.__pool = self.connect_mysql(databases)
+        self.conn = self.__pool.connection()
+        self.cursor = self.conn.cursor()
 
     def __del__(self):
-        """退出时关闭与数据库的连接"""
-        self.cursor.close()
-        self.conn.close()
+        """退出时释放资源"""
+        if self.cursor:
+            self.cursor.close()
+        if self.conn:
+            self.conn.close()
 
     @staticmethod
-    def connect_mysql():
-        while True:
+    def connect_mysql(databases):
+        """单例模式，会防止创建多个连接池"""
+        times = settings.RE_CONNECT_SQL_TIME
+        while times > 0:
+            d = {
+                'mincached': 5,  # 初始化时，链接池中至少创建的空闲的链接，0表示不创建
+                'maxcached': 5,  # 链接池中最多闲置的链接，0和None不限制
+                'maxshared': 0,
+            # 链接池中最多共享的链接数量，0和None表示全部共享。PS: 无用，因为pymysql和MySQLdb等模块的 threadsafety都为1，所有值无论设置为多少，_maxshared永远为0，所以永远是所有链接都共享。
+                'maxconnections': 20,  # 连接池允许的最大连接数，0和None表示不限制连接数
+                'blocking': True,  # 连接池中如果没有可用连接后，是否阻塞等待。True，等待；False，不等待然后报错
+                'maxusage': None,  # 一个链接最多被重复使用的次数，None表示无限制
+                'ping': 0,
+            }
             try:
-                conn = pymysql.connect(**settings.DATABASES)
-                cursor = conn.cursor()
-                break
+                _pool = SingletonPoolDB(pymysql, **d, **databases)
+                return _pool
             except:
-                settings.RE_CONNECT_SQL_TIME -= 1
+                log.debug('创建连接池失败，暂停{}S后继续创建'.format(settings.RE_CONNECT_SQL_WAIT_TIME))
+                print('创建连接池失败，暂停{}S后继续创建'.format(settings.RE_CONNECT_SQL_WAIT_TIME))
+                times -= 1
                 time.sleep(settings.RE_CONNECT_SQL_WAIT_TIME)
-                if settings.RE_CONNECT_SQL_TIME < 0:
-                    log.error('数据库连接失败...')
-                    raise Exception('数据库连接失败...')
-                continue
-        return conn, cursor
+
+        log.error('数据库连接失败...')
+        raise Exception('数据库连接失败...')
 
     def insert(self, table_name, **kwargs):
         keys, vals = tuple(kwargs.keys()), tuple(kwargs.values())
@@ -55,6 +79,7 @@ class Sql(object):
         :param where:
         :return:
         """
+        assert where is not None, 'update 操作必须带where条件'
         filter_condition = ""  # 筛选条件
         vals_condition = tuple()
         if where:
@@ -82,9 +107,10 @@ class Sql(object):
             log.error("error = {}".format(e))
             return False
 
+    def _select(self):
+        pass
 
-
-    def select(self, table_name, *cols, where=None, limit=None):
+    def select(self, table_name, *cols, where=None, limit=None, first=False):
         """
         :param table_name: 表名,str
         :param cols: 列名
@@ -93,19 +119,33 @@ class Sql(object):
         SELECT * FROM DecMsg where ClientSeqNo="201801100950223990" and DeleteFlag="0"
         :return:
         """
-        filter_condition = "where "  # 筛选条件,暂时只支持一个查询条件
+        filter_condition = ""  # 筛选条件,暂时只支持一个查询条件
         vals=tuple()
         if where:
             vals=tuple(where.values())
             for i,k in enumerate(where):
-
                 if len(vals)==1:
-                    filter_condition += '{}=%s'.format(k)
+                    if k.endswith('__gt'):
+                        filter_condition += 'where {}>%s'.format(k[:-4])
+                    elif k.endswith('__lt'):
+                        filter_condition += 'where {}<%s'.format(k[:-4])
+                    else:
+                        filter_condition += 'where {}=%s'.format(k)
                 else:
                     if i==0:
-                        filter_condition+='{}=%s'.format(k)
+                        if k.endswith('__gt'):
+                            filter_condition += 'where {}>%s'.format(k[:-4])
+                        elif k.endswith('__lt'):
+                            filter_condition += 'where {}<%s'.format(k[:-4])
+                        else:
+                            filter_condition += 'where {}=%s'.format(k)
                     else:
-                        filter_condition += ' and {}=%s'.format(k)
+                        if k.endswith('__gt'):
+                            filter_condition += ' and {}>%s'.format(k[:-4])
+                        elif k.endswith('__lt'):
+                            filter_condition += ' and {}<%s'.format(k[:-4])
+                        else:
+                            filter_condition += ' and {}=%s'.format(k)
 
         if not cols and not limit:  # select * ,无limit
             sql = 'select * from {} {};'.format(table_name,filter_condition)
@@ -121,9 +161,22 @@ class Sql(object):
             sql = 'select {} from {} {};'.format(col_names, table_name,filter_condition)
 
         self.cursor.execute(sql, vals)
+        if self.cursor.description:
+            names = [x[0] for x in self.cursor.description]
+
         self.conn.commit()
-        ret = self.cursor.fetchall()
-        return ret
+        if first:
+            ret = self.cursor.fetchone()
+            if ret:
+                return dict(zip(names, ret))
+            else:
+                return None
+        result = self.cursor.fetchall()
+        rets = [x for x in result]
+        ret_dict = []
+        for ret in rets:
+            ret_dict.append(dict(zip(names, ret)))
+        return ret_dict
 
     def all(self, table_name, *cols):
         col_names = ",".join(cols)
@@ -176,11 +229,11 @@ class Sql(object):
             log.error("error = {}".format(e))
             return False
 
-    def raw_sql(self, _sql):
+    def raw_sql(self, _sql, *args):
         """支持原生SQL"""
         ret = {'status': False, 'ret_tuples': ()}
         try:
-            lines = self.cursor.execute(_sql)
+            lines = self.cursor.execute(_sql, args)
             self.conn.commit()
             if lines:
                 ret['status'] = True
@@ -194,29 +247,9 @@ class Sql(object):
         return ret
 
 
-def update_hs_gmodels_other():
-    """更新商品编码表gmodel其它信息"""
-    sql = Sql()
-    _sql = 'select id, gmodel from Commodity'
-    gmodel_obj = sql.raw_sql(_sql)
-    index = 0
-    if gmodel_obj.get('status'):
-        for obj_list in gmodel_obj.get('ret_tuples'):
-            sql.update('Commodity', where={'id': obj_list[0]}, gmodel=obj_list[1] + '其它')
-            index += 1
-            print('已更新第{}条'.format(index))
-    print('更新完成，共更新数据{}条'.format(index))
-
-
-def functest2(tabsname, where, **kwargs):
-    sql = Sql()
-    return sql.update(tabsname, where, **kwargs)
-
-
 if __name__ == "__main__":
-    # update_hs_gmodels_other()
-    print('大爷')
-    if functest2('DecMsg', where={'DecId': 50,}, QpNotes='大爷'):
-        print('大爷好')
-    else:
-        print('大爷慢走')
+    sql = Sql(settings.DATABASES_GOLD_8_1)
+    ret = sql.select('Msg', where={'id__gt': 85}, first=False)
+    # ret.pop('id')
+    # ret = sql.insert('Msg', **ret)
+    print("ret = ", ret)

@@ -32,7 +32,7 @@ class BaseCls(object):
         self.CookieDir = settings.COOKIE_DIR
         self.aipOcr = AipOcr(settings.APP_ID, settings.API_KEY, settings.SECRET_KEY)
         self.session = requests.session()
-        self.sql = Sql()
+        self.sql = Sql(settings.DATABASES_SERVER)
 
     def get_file_content(self):
         image = Image.open(self.ImageDir)

@@ -19,8 +19,8 @@ class singletonPoolDB(PooledDB):
 
 
 class Sql(object):
-    def __init__(self):
-        self.__pool = self.connect_mysql()
+    def __init__(self, databases):
+        self.__pool = self.connect_mysql(databases)
         self.conn = self.__pool.connection()
         self.cursor = self.conn.cursor()
 
@@ -32,7 +32,7 @@ class Sql(object):
             self.conn.close()
 
     @staticmethod
-    def connect_mysql():
+    def connect_mysql(databases):
         """单例模式，会防止创建多个连接池"""
         times = settings.RE_CONNECT_SQL_TIME
         while times > 0:
@@ -47,7 +47,7 @@ class Sql(object):
                 'ping': 0,
             }
             try:
-                _pool = singletonPoolDB(pymysql, **d, **settings.DATABASES)
+                _pool = singletonPoolDB(pymysql, **d, **databases)
                 return _pool
             except:
                 log.debug('创建连接池失败，暂停{}S后继续创建'.format(settings.RE_CONNECT_SQL_WAIT_TIME))
@@ -79,6 +79,7 @@ class Sql(object):
         :param where:
         :return:
         """
+        assert where is not None, 'update 操作必须带where条件'
         filter_condition = ""  # 筛选条件
         vals_condition = tuple()
         if where:
@@ -105,8 +106,6 @@ class Sql(object):
             self.conn.rollback()
             log.error("error = {}".format(e))
             return False
-
-
 
     def select(self, table_name, *cols, where=None, limit=None):
         """
@@ -145,6 +144,7 @@ class Sql(object):
             sql = 'select {} from {} {};'.format(col_names, table_name,filter_condition)
 
         self.cursor.execute(sql, vals)
+
         self.conn.commit()
         ret = self.cursor.fetchall()
         return ret
@@ -217,3 +217,10 @@ class Sql(object):
 
         return ret
 
+
+if __name__ == '__main__':
+    sql = Sql(settings.DATABASES_GOLD_8_1)
+    ret = sql.raw_sql('SELECT GdsSeqno, COUNT(*) as count from BwlListType group by GdsSeqno having count > 1')
+    print('ret = ', ret)
+    ret = sql.raw_sql('SELECT MAX(GdsSeqno) from BwlListType')
+    print('ret = ', ret)

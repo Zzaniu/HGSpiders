@@ -185,14 +185,13 @@ class NptsSpider(BaseCls):
         return ret
 
     def re_update_exglist_db(self, gdsSeqno, response_dict, nptsno):
+        assert response_dict['rows'], '海关暂无相关手册{}成品信息...'.format(nptsno)
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsSeqno']) < gdsSeqno:
                 self.updata_db_exg(data, nptsno)
                 if 1 == int(data['gdsSeqno']):
                     ret = True
-        else:
-            raise Exception('海关暂无相关手册成品信息...')
         return ret
 
     @error_2_send_email
@@ -370,6 +369,7 @@ class NptsSpider(BaseCls):
         return ret
 
     def update_cmlist_db(self, gSeqno, response_dict, nptsno):
+        assert response_dict['rows'], '海关暂无相关手册{}单损耗信息...'.format(nptsno)
         ret = False
         for data in response_dict['rows']:
             if int(data['gseqNo']) > gSeqno:
@@ -378,8 +378,6 @@ class NptsSpider(BaseCls):
                     ret = True
             else:
                 ret = True
-        else:
-            raise Exception('海关暂无相关手册单损耗信息...')
         return ret
 
     @error_2_send_email
@@ -413,6 +411,7 @@ class NptsSpider(BaseCls):
         log.info('手册号{}已更新料件序号：{}'.format(nptsno, data['gdsSeqno']))
 
     def update_imglist_db(self, gdsSeqno, response_dict, nptsno):
+        assert response_dict['rows'], '海关暂无相关手册{}料件信息...'.format(nptsno)
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsSeqno']) > gdsSeqno:
@@ -421,8 +420,6 @@ class NptsSpider(BaseCls):
                     ret = True
             else:
                 ret = True
-        else:
-            raise Exception('海关暂无相关手册料件信息...')
         return ret
 
     def re_update_imglist_db(self, gdsSeqno, response_dict, nptsno):
@@ -561,4 +558,4 @@ class NptsSpider(BaseCls):
         self.update_npts_head_db(nptsno, seqNo)
         self.update_npts_img_list_info(nptsno, seqNo)
         self.update_npts_exg_list_info(nptsno, seqNo)
-        # self.update_npts_cm_list_info(nptsno, seqNo)
+        self.update_npts_cm_list_info(nptsno, seqNo)
