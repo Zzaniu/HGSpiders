@@ -65,6 +65,9 @@ class Sql(object):
         sql = 'insert into {}({}) VALUES ({});'.format(table_name, cols, wildcards)
         try:
             self.cursor.execute(sql, args=vals)
+            if self.cursor.description:
+                names = [x[0] for x in self.cursor.description]
+                print('name = ', names)
             self.conn.commit()
             return True
         except:
@@ -72,20 +75,28 @@ class Sql(object):
             self.conn.rollback()
             return False
 
-    def update(self,table_name,where=None, **kwargs):
+    def update(self,table_name,where=None,no_where=False, **kwargs):
         """
         :param table_name:
         :param cols:
         :param where:
         :return:
         """
-        assert where is not None, 'update 操作必须带where条件'
+        if not no_where:
+            assert where is not None, 'update 操作必须带where条件'
         filter_condition = ""  # 筛选条件
         vals_condition = tuple()
         if where:
             vals_condition = tuple(where.values())
-            for k, v in where.items():
-                filter_condition += "where {}=%s".format(k)
+            lens = len(where.items())
+            for i, k in enumerate(where):
+                if lens == 1:
+                    filter_condition += "where {}=%s".format(k)
+                else:
+                    if i == 0:
+                        filter_condition += "where {}=%s".format(k)
+                    else:
+                        filter_condition += " AND {}=%s".format(k)
 
         keys, vals = tuple(kwargs.keys()), tuple(kwargs.values())
         cols = ",".join(keys)
@@ -249,7 +260,7 @@ class Sql(object):
 
 if __name__ == "__main__":
     sql = Sql(settings.DATABASES_GOLD_8_1)
-    ret = sql.select('Msg', where={'id__gt': 85}, first=False)
+    ret = sql.select('Msg', where={'id__gt': 85}, first=True)
     # ret.pop('id')
     # ret = sql.insert('Msg', **ret)
     print("ret = ", ret)

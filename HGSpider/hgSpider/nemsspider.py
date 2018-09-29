@@ -64,11 +64,11 @@ class NemsSpider(BaseCls):
                 if self.re_update_cmlist_db(min_gSeqno, response_dict, nemsno):
                     _gSeqno = self.get_local_db_max_or_min_gseqno('NemsCmList', seqNo, max=False)
                     if 1 == _gSeqno:
-                        log.info('账册号{}的单损耗序号已更新至 {}'.format(nemsno, _gSeqno))
+                        log.info('账册号{}的{}单损耗序号已更新至 {}'.format(nemsno, seqNo, _gSeqno))
                         return
                 else:
                     wait_time = random.randint(5, 10)
-                    log.info('海关今日更新账册号{}的单损耗序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                    log.info('海关今日更新账册号{}的{}单损耗序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nemsno, seqNo, self.pagesize, wait_time, page + 1))
                     time.sleep(wait_time)
                     continue
             else:
@@ -76,17 +76,17 @@ class NemsSpider(BaseCls):
                     if self.update_cmlist_db(max_gSeqno, response_dict, nemsno):
                         _gSeqno = self.get_local_db_max_or_min_gseqno('NemsCmList', seqNo)
                         if _gSeqno and _gSeqno > max_gSeqno:
-                            log.info('账册号{}的单损耗序号已更新至 {}'.format(nemsno, _gSeqno))
+                            log.info('账册号{}的{}单损耗序号已更新至 {}'.format(nemsno, seqNo, _gSeqno))
                         else:
-                            log.info('海关今日暂未更新账册号为{}的单损耗信息..'.format(nemsno))
+                            log.info('海关今日暂未更新账册号为{}的{}单损耗信息..'.format(nemsno, seqNo))
                         return
                     else:
                         wait_time = random.randint(5, 10)
-                        log.info('海关今日更新账册号{}的单损耗序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                        log.info('海关今日更新账册号{}的{}单损耗序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nemsno, seqNo, self.pagesize,wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
                 except Exception as e:
-                    log.log(str(e))
+                    log.info(str(e))
                     return
 
     @error_2_send_email
@@ -445,15 +445,16 @@ class NemsSpider(BaseCls):
         while True:
             page += 1
             response_dict = self.get_nems_img_list_info(page, seqNo)
-            if has_breakpoint:
+            if has_breakpoint and seqNo != '201800000000004494':  # 201800000000004494的料件号不是从1开始连续的号
                 if self.re_update_imglist_db(min_gdsSeqno, response_dict, nemsno):
                     _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsImgList', seqNo, max=False)
                     if 1 == _gdsSeqno:
-                        log.info('账册号{}的料件序号已更新至 {}'.format(nemsno, _gdsSeqno))
+                        log.info('账册号{}的{}料件序号已更新至 {}'.format(nemsno, seqNo, _gdsSeqno))
                         return
                 else:
                     wait_time = random.randint(5, 10)
-                    log.info('海关今日更新账册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                    log.info('海关今日更新账册号{}的{}料件序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nemsno, seqNo,
+                                                                                self.pagesize, wait_time, page + 1))
                     time.sleep(wait_time)
                     continue
             else:
@@ -461,13 +462,13 @@ class NemsSpider(BaseCls):
                     if self.update_imglist_db(max_gdsSeqno, response_dict, nemsno):
                         _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NemsImgList', seqNo)
                         if _gdsSeqno and _gdsSeqno > max_gdsSeqno:
-                            log.info('账册号{}的料件序号已更新至 {}'.format(nemsno, _gdsSeqno))
+                            log.info('账册号{}的{}料件序号已更新至 {}'.format(nemsno, seqNo, _gdsSeqno))
                         else:
-                            log.info('海关今日暂未更新账册号为{}的料件..'.format(nemsno))
+                            log.info('海关今日暂未更新账册号为{}的{}料件..'.format(nemsno, seqNo))
                         return
                     else:
                         wait_time = random.randint(5, 10)
-                        log.info('海关今日更新账册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, wait_time, page + 1))
+                        log.info('海关今日更新账册号{}的{}料件序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nemsno, seqNo, self.pagesize, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
                 except Exception as e:
@@ -495,7 +496,7 @@ class NemsSpider(BaseCls):
             "copGNo": "",
             "gdecd": "",
             "gdeNm": "",
-            "page": {"curPage": page, "pageSize": settings.pageSize},
+            "page": {"curPage": page, "pageSize": self.pagesize},
             "operType": "0",
             "seqNO": seqNo,
             "queryType": "Img",
@@ -520,7 +521,7 @@ class NemsSpider(BaseCls):
                 seqNo),
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        data = {"exgGNo": "", "imgGNo": "", "exgVersion": "", "page": {"curPage": page, "pageSize": settings.pageSize},
+        data = {"exgGNo": "", "imgGNo": "", "exgVersion": "", "page": {"curPage": page, "pageSize": self.pagesize},
                 "operType": "0", "seqNO": seqNo, "queryType": "Cm"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
@@ -543,7 +544,7 @@ class NemsSpider(BaseCls):
                 seqNo),
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        data = {"copGNo": "", "gdecd": "", "gdeNm": "", "page": {"curPage": page, "pageSize": settings.pageSize}, "operType": "0",
+        data = {"copGNo": "", "gdecd": "", "gdeNm": "", "page": {"curPage": page, "pageSize": self.pagesize}, "operType": "0",
                 "seqNO": seqNo, "queryType": "Exg"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
@@ -561,7 +562,7 @@ class NemsSpider(BaseCls):
         self.update_nems_head_db(nemsno, seqNo)
         self.update_nems_img_list_info(nemsno, seqNo)
         self.update_nems_exg_list_info(nemsno, seqNo)
-        self.update_nems_cm_list_info(nemsno, seqNo)
+        # self.update_nems_cm_list_info(nemsno, seqNo)
 
 
 if __name__ == "__main__":

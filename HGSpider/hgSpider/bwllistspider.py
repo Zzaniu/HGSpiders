@@ -63,6 +63,7 @@ class BwlListSpider(BaseCls):
             'DclUprcAmt': data.get('dclUprcAmt'),
             'DclCurrcd': data.get('dclCurrCd'),
             'LimitDate': data.get('limitDate'),
+            'SecdLawfUnitcd': data.get('secdLawfUnitCd'),
             'BwlList2Head': 1,
         }
         _d = copy.deepcopy(d)
@@ -97,7 +98,6 @@ class BwlListSpider(BaseCls):
         while True:
             page += 1
             response_dict = self.get_bwl_list_info(page, seqno)
-            print('seqno = ', seqno, 'response_dict = ', response_dict)
             if has_breakpoint:
                 if self.re_update_bwlist_db(min_gSeqno, response_dict, bwlno):
                     _gSeqno = self.get_local_db_max_or_min_gseqno(seqno, max=False)
@@ -160,7 +160,6 @@ class BwlListSpider(BaseCls):
             return True
         head_dict = self.get_bwl_head_info(seqNo).get('data')
         head_obj = head_dict.get('bwlHead')
-        print('head_obj = ', head_obj)
         d = {
             'SeqNo': head_obj.get('seqNo', ''),
             'BwlNo': head_obj.get('bwlNo', ''),
@@ -283,6 +282,39 @@ class BwlListSpider(BaseCls):
         """这里可以考虑做成多线程，主要是怕把海关搞挂了，对性能也没有要求，就先单线程跑着吧"""
         self.update_bwl_head_db(bwlno, seqNo)
         self.update_bwl_list_info(bwlno, seqNo)
+        # self.update_by_field(bwlno, seqNo)
+
+    def update_by_field(self, bwlno, seqno):
+        page = 0
+        while True:
+            page += 1
+            response_dict = self.get_bwl_list_info(page, seqno)
+            if not response_dict['rows']:
+                return
+            try:
+                self.update_db_list_by_field(response_dict, bwlno, seqno)
+                if (page + 1) * settings.pageSize > int(response_dict.get('total')):
+                    return
+            except Exception as e:
+                log.info(str(e))
+                return
+
+    def update_db_list_by_field(self, response_dict, bwlno, seqno):
+        for data in response_dict['rows']:
+            if data.get('secdLawfUnitCd'):
+                d = {
+                    'SecdLawfUnitcd': data.get('secdLawfUnitCd'),
+                }
+                _d = copy.deepcopy(d)
+                for k in _d:
+                    if _d[k]:
+                        pass
+                    else:
+                        d.pop(k)
+                self.sql.update('BwlListType', where={'SeqNo': seqno, 'GdsSeqno': data.get('gdsSeqNo')}, **d)
+                log.info('物流账册{}已更新单损耗序号：{}'.format(bwlno, data['gdsSeqNo']))
+            else:
+                continue
 
 
 if __name__ == "__main__":

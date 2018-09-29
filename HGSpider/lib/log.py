@@ -11,7 +11,7 @@ import logging.config
 from conf import settings
 import threading
 import functools
-
+import concurrent_log_handler
 
 def singleton(func):
     """单例装饰器函数"""

@@ -72,20 +72,28 @@ class Sql(object):
             self.conn.rollback()
             return False
 
-    def update(self,table_name,where=None, **kwargs):
+    def update(self, table_name, where=None, no_where=False, **kwargs):
         """
         :param table_name:
         :param cols:
         :param where:
         :return:
         """
-        assert where is not None, 'update 操作必须带where条件'
+        if not no_where:
+            assert where is not None, 'update 操作必须带where条件'
         filter_condition = ""  # 筛选条件
         vals_condition = tuple()
         if where:
             vals_condition = tuple(where.values())
-            for k, v in where.items():
-                filter_condition += "where {}=%s".format(k)
+            lens = len(where.items())
+            for i, k in enumerate(where):
+                if lens == 1:
+                    filter_condition += "where {}=%s".format(k)
+                else:
+                    if i == 0:
+                        filter_condition += "where {}=%s".format(k)
+                    else:
+                        filter_condition += " AND {}=%s".format(k)
 
         keys, vals = tuple(kwargs.keys()), tuple(kwargs.values())
         cols = ",".join(keys)
@@ -144,7 +152,6 @@ class Sql(object):
             sql = 'select {} from {} {};'.format(col_names, table_name,filter_condition)
 
         self.cursor.execute(sql, vals)
-
         self.conn.commit()
         ret = self.cursor.fetchall()
         return ret

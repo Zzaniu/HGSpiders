@@ -67,7 +67,7 @@ class NptsSpider(BaseCls):
                         return
                 else:
                     wait_time = random.randint(5, 10)
-                    log.info('海关今日更新手册号{}的单损耗序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                    log.info('海关今日更新手册号{}的单损耗序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                     time.sleep(wait_time)
                     continue
             else:
@@ -81,7 +81,7 @@ class NptsSpider(BaseCls):
                         return
                     else:
                         wait_time = random.randint(5, 10)
-                        log.info('海关今日更新手册号{}的单损耗序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                        log.info('海关今日更新手册号{}的单损耗序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
                 except Exception as e:
@@ -121,7 +121,7 @@ class NptsSpider(BaseCls):
                         return
                 else:
                     wait_time = random.randint(5, 10)
-                    log.info('海关今日更新手册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                    log.info('海关今日更新手册号{}的成品序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                     time.sleep(wait_time)
                     continue
             else:
@@ -135,7 +135,7 @@ class NptsSpider(BaseCls):
                         return
                     else:
                         wait_time = random.randint(5, 10)
-                        log.info('海关今日更新手册号{}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                        log.info('海关今日更新手册号{}的成品序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
                 except Exception as e:
@@ -174,6 +174,7 @@ class NptsSpider(BaseCls):
         log.info('手册号{}已更新成品序号：{}'.format(nptsno, data['gdsSeqno']))
 
     def update_exglist_db(self, gdsSeqno, response_dict, nptsno):
+        assert response_dict['rows'], '海关暂无相关手册{}成品信息...'.format(nptsno)
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsSeqno']) > gdsSeqno:
@@ -185,7 +186,7 @@ class NptsSpider(BaseCls):
         return ret
 
     def re_update_exglist_db(self, gdsSeqno, response_dict, nptsno):
-        assert response_dict['rows'], '海关暂无相关手册{}成品信息...'.format(nptsno)
+        # assert response_dict['rows'], '海关暂无相关手册{}成品信息...'.format(nptsno)
         ret = False
         for data in response_dict['rows']:
             if int(data['gdsSeqno']) < gdsSeqno:
@@ -249,7 +250,6 @@ class NptsSpider(BaseCls):
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
         http_res = self.session.post(self.RealUrl2, data=json.dumps(postdata), timeout=20)
-        print('http_res.text = ', http_res.text)
         return json.loads(http_res.text)
 
     @error_2_send_email
@@ -454,7 +454,7 @@ class NptsSpider(BaseCls):
                         return
                 else:
                     wait_time = random.randint(5, 10)
-                    log.info('海关今日更新手册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                    log.info('海关今日更新手册号{}的料件序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                     time.sleep(wait_time)
                     continue
             else:
@@ -468,7 +468,7 @@ class NptsSpider(BaseCls):
                         return
                     else:
                         wait_time = random.randint(5, 10)
-                        log.info('海关今日更新手册号{}的料件序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nptsno, wait_time, page + 1))
+                        log.info('海关今日更新手册号{}的料件序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
                 except Exception as e:
@@ -489,12 +489,11 @@ class NptsSpider(BaseCls):
                 seqNo),
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        data = {"endprdSeqno": "", "mtpckSeqno": "", "ucnsVerno": "", "page": {"curPage": page, "pageSize": settings.pageSize},
+        data = {"endprdSeqno": "", "mtpckSeqno": "", "ucnsVerno": "", "page": {"curPage": page, "pageSize": self.pagesize},
                 "operType": "0", "seqNo": seqNo, "queryType": "Con"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
         http_res = self.session.post(self.RealUrl3, data=json.dumps(data), timeout=20)
-        print("http_res.text = ", http_res.text)
         return json.loads(http_res.text)
 
     def get_npts_img_list_info(self, page, seqNo):
@@ -512,12 +511,11 @@ class NptsSpider(BaseCls):
             "Accept-Encoding": "gzip, deflate",
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": settings.pageSize}, "operType": "0",
+        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": self.pagesize}, "operType": "0",
                 "seqNo": seqNo, "queryType": "Img"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
         http_res = self.session.post(self.RealUrl3, data=json.dumps(data), timeout=20)
-        print("http_res.text = ", http_res.text)
         return json.loads(http_res.text)
 
     @error_2_send_email
@@ -536,20 +534,18 @@ class NptsSpider(BaseCls):
                 seqNo),
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": settings.pageSize}, "operType": "0",
+        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": self.pagesize}, "operType": "0",
                 "seqNo": seqNo, "queryType": "Exg"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
         http_res = self.session.post(self.RealUrl3, headers=headers, data=json.dumps(data), timeout=20)
-        print('http_res.text = ', http_res.text)
         return json.loads(http_res.text)
 
     def get_info(self):
         for ntpsno, response_dict in self.get_company_seqno():
-            print('response_dict = ', response_dict)
             for obj in response_dict.get('rows'):
+                seqNo = obj.get('seqNo')
                 if obj.get('emlNo'):
-                    seqNo = obj.get('seqNo')
                     self.get_npts_info(ntpsno, seqNo)
                 else:
                     log.warning('手册号{}的预录入统一编号{}查询页面没有加工贸易手册编号，跳过爬取'.format(ntpsno, seqNo))
@@ -558,4 +554,4 @@ class NptsSpider(BaseCls):
         self.update_npts_head_db(nptsno, seqNo)
         self.update_npts_img_list_info(nptsno, seqNo)
         self.update_npts_exg_list_info(nptsno, seqNo)
-        self.update_npts_cm_list_info(nptsno, seqNo)
+        # self.update_npts_cm_list_info(nptsno, seqNo)
