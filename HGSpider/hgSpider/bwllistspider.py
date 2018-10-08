@@ -50,8 +50,14 @@ class BwlListSpider(BaseCls):
 
     @error_2_send_email
     def update_db_list(self, data, bwlno):
+        seqno = data.get('seqNo')
+        BwlList2Head = self.sql.select('BwlHeadType', 'Id', where={'SeqNo': seqno})
+        if BwlList2Head:
+            BwlList2Head = BwlList2Head[0][0]
+        else:
+            raise Exception('SeqNo:{}發生錯誤，表頭數據不存在'.format(seqno))
         d = {
-            'SeqNo': data.get('seqNo'),
+            'SeqNo': seqno,
             'GdsSeqno': data.get('gdsSeqNo'),
             'GdsMtno': data.get('gdsMtno'),
             'Gdecd': data.get('gdecd'),
@@ -64,7 +70,7 @@ class BwlListSpider(BaseCls):
             'DclCurrcd': data.get('dclCurrCd'),
             'LimitDate': data.get('limitDate'),
             'SecdLawfUnitcd': data.get('secdLawfUnitCd'),
-            'BwlList2Head': 1,
+            'BwlList2Head': BwlList2Head,
         }
         _d = copy.deepcopy(d)
         for k in _d:
