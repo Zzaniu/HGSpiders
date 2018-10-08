@@ -71,7 +71,7 @@ class Sql(object):
             self.conn.commit()
             return True
         except:
-            log.error('数据库发生错误，错误信息{}'.format(str(traceback.format_exc())))
+            log.error('数据库发生错误，错误信息{},sql={}, vals={}'.format(str(traceback.format_exc()), sql, vals))
             self.conn.rollback()
             return False
 
@@ -130,6 +130,8 @@ class Sql(object):
         SELECT * FROM DecMsg where ClientSeqNo="201801100950223990" and DeleteFlag="0"
         :return:
         """
+        if limit:
+            assert len(limit) == 2, 'limit 格式错误，格式类似[0, 10]'
         filter_condition = ""  # 筛选条件,暂时只支持一个查询条件
         vals=tuple()
         if where:
@@ -162,10 +164,10 @@ class Sql(object):
             sql = 'select * from {} {};'.format(table_name,filter_condition)
         elif limit:
             if not cols:  # select * 有limit
-                sql = 'select * from {} {} limit {};'.format(table_name,filter_condition, limit)
+                sql = 'select * from {} {} limit {},{};'.format(table_name,filter_condition, limit[0], limit[1])
             else:  # select x1,x2 有limit
                 col_names = ",".join(cols)
-                sql = 'select {} from {} {} limit {};'.format(col_names, table_name,filter_condition, limit)
+                sql = 'select {} from {} {} limit {},{};'.format(col_names, table_name,filter_condition, limit[0], limit[1])
         else:
             # no limit,有col值
             col_names = ",".join(cols)

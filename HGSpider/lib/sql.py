@@ -227,7 +227,26 @@ class Sql(object):
 
 if __name__ == '__main__':
     sql = Sql(settings.DATABASES_GOLD_8_1)
-    ret = sql.raw_sql('SELECT GdsSeqno, COUNT(*) as count from BwlListType group by GdsSeqno having count > 1')
+    # ret = sql.raw_sql('SELECT GdsSeqno, COUNT(*) as count from BwlListType group by GdsSeqno having count > 1')
+    # print('ret = ', ret)
+    # ret = sql.raw_sql('SELECT MAX(GdsSeqno) from BwlListType')
+    # print('ret = ', ret)
+    NId = 492
+    NId = 478
+    ret = sql.select('NRelation', 'MoreCategory', where={"id": NId})
     print('ret = ', ret)
-    ret = sql.raw_sql('SELECT MAX(GdsSeqno) from BwlListType')
-    print('ret = ', ret)
+    print('ret = ', ret[0][0])
+    if ret[0][0] == 1:  # 四合一
+        decid = sql.select('Relation', 'DecId', where={'NId': NId})
+        if decid:
+            bl = sql.select('DecHead', 'BLNo', where={'DecId': decid[0][0]})
+            print('bl = ', bl)
+            if not bl or not bl[0][0]:
+                print('大爷')
+    elif ret[0][0] == 8:  # 五合一
+        decid = sql.select('Msg', 'DecId', where={'NId': NId})
+        if decid:
+            bl = sql.select('DecHead', 'BLNo', where={'DecId': decid[0][0]})
+            print('bl = ', bl)
+            if not bl or not bl[0][0]:
+                print('大爷')

@@ -56,4 +56,4 @@ def error_2_send_email(func):
 
 
 if __name__ == "__main__":
-    send_email('女朋友约你', subject="女朋友了找你")
+    send_email('女朋友约你', subject="女朋友找你")

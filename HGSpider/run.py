@@ -7,6 +7,7 @@ sys.path.append(path)
 
 from multiprocessing import Process
 from hgSpider.bwllistspider import BwlListSpider
+from hgSpider.special_bwllistspider import SpecialBwlListSpider
 from hgSpider.nptsspider import NptsSpider
 from hgSpider.nemsspider import NemsSpider
 from lib.sync_sql import SyncSqlGold
@@ -14,6 +15,11 @@ from lib.sync_sql import SyncSqlGold
 
 def runBwlSpider():
     bwl_obj = BwlListSpider()
+    bwl_obj.get_info()
+
+
+def runSpecialBwlSpider():
+    bwl_obj = SpecialBwlListSpider()
     bwl_obj.get_info()
 
 
@@ -34,10 +40,11 @@ def sync_db():
 
 if __name__ == "__main__":
     t1 = Process(target=runBwlSpider)
-    t2 = Process(target=runNptsSpider)
-    t3 = Process(target=runNemsSpider)
-    threads = [t1, t2, t3]
-    threads = [t1]
+    t2 = Process(target=runSpecialBwlSpider)
+    t3 = Process(target=runNptsSpider)
+    t4 = Process(target=runNemsSpider)
+    # threads = [t1, t2, t3, t4]
+    threads = [t3,]
     for i in threads:
         i.start()
         time.sleep(10)

@@ -23,7 +23,7 @@ class NptsSpider(BaseCls):
         super(NptsSpider, self).__init__(*args, **kwargs)
         self.CookieUrl = settings.NPTSCOOKIE_URL
         self.RealUrl = r'http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml/emlQueryListService'
-        self.RealUrl2 = r'http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml/emsDetailService'
+        self.RealUrl2 = r'http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml/emlDetailService'
         self.RealUrl3 = r'http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml/emlGoodsQueryService'
         self.CompanyList = settings.NPTS_COMPANY_LIST
 
@@ -245,6 +245,7 @@ class NptsSpider(BaseCls):
             "Accept-Language": "zh-CN,zh;q=0.9",
             'Cache-Control': None,
             'Content-Length': None,
+            'Upgrade-Insecure-Requests': None,
         }
         postdata = {"seqNo": seqNo}
         self.session.headers.update(headers)

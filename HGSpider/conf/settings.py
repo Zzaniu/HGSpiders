@@ -14,6 +14,10 @@ BWLCOOKIE_URL = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub
 BWL_QUERY_URL = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/bwl/Z8/bwlQueryList'
 BWLREAL_LIST_URL = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/bwl/Z8/bwlGoodsQueryList'
 BWLREAL_HEAD_URL = R'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/bwl/Z8/bwlDetailRequest'
+SPECIAL_BWLCOOKIE_URL = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/bwlQueryList?sysId=Z7&ngBasePath=http%3A%2F%2Fsz.singlewindow.cn%3A80%2Fdyck%2FswProxy%2Femspubserver%2F'
+SPECIAL_BWL_QUERY_URL = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/bwl/Z7/bwlQueryList'
+SPECIAL_BWLREAL_LIST_URL = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/bwl/Z7/bwlGoodsQueryList'
+SPECIAL_BWLREAL_HEAD_URL = R'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/bwl/Z7/bwlDetailRequest'
 NPTSCOOKIE_URL = r'http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/sw/ems/npts/queryEml?sysId=B1&amp;ngBasePath=http%3A%2F%2Fsz.singlewindow.cn%3A80%2Fdyck%2FswProxy%2Fnptsserver%2F'
 NEMSCOOKIE_URL = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/queryCanadianTradeBooks?sysId=95&ngBasePath=http%3A%2F%2Fsz.singlewindow.cn%3A80%2Fdyck%2FswProxy%2Femspubserver%2F'
 APP_ID = '11637191'
@@ -49,12 +53,15 @@ DATABASES_GOLD_8_1 = {
 }
 
 # 需要爬取手册信息的公司列表
-NPTS_COMPANY_LIST = ['4403944047', '4403945299', '4403941220', '4403046988', '4403942711', '4403947730', '4403161G44', '440314634A', '4403180896', '4403940185', '4403948655', '4403937851',
+NPTS_COMPANY_LIST = ['4403046959', '4403046242', '4403946615', '4403046832', '440316647Y', '44031419L0', '4413947161', '440313813Q', '4413331040', '4403046378', '4403944047', '4403945299', '4403941220', '4403046988', '4403942711', '4403947730', '4403161G44', '440314634A', '4403180896', '4403940185', '4403948655', '4403937851',
                      '4403949158', '4403946532', '4403941779', '440314339B', '4413361208', '4403946578', '4403937478',
                      '440314670B', '4453964065', '440314867B', '440304637U', '440304638E']
 # 需要爬取帐册信息的公司列表
-NEMS_COMPANY_LIST = ['4403949040', "4403949626", '440304631D', '440314726B', '4419946961', '4403945502', '4403145859', '4403937384', '4403948176', '4403949633', '4403942926', '4413342005',
+NEMS_COMPANY_LIST = ['44031419DR', '4403945530', '4403968573', '4403943252', '4403948297', '4413940964', '4413341227', '4413341215', '4413341228', '4403046703', '440304604L', '4403949040', "4403949626", '440304631D', '440314726B', '4419946961', '4403945502', '4403145859', '4403937384', '4403948176', '4403949633', '4403942926', '4413342005',
                      '4403137880', '4403046901', '440314709B', '4413948187', '4403946615', '4403949593',
                      '4403046798', '4403140658', '4403046685', '4403046418']
 # 物流账册公司列表
-BWL_COMPANY_LIST = ['4403W60001', '5006W60005',]
+BWL_COMPANY_LIST = ['4403W60001',]
+
+# 特殊监管区域公司列表
+SPECIAL_BWL_COMPANY_LIST = ['4403660096',]
