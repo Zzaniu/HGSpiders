@@ -27,7 +27,7 @@ class SpecialBwlListSpider(BwlListSpider):
     @error_2_send_email
     def update_db_list(self, data, bwlno):
         seqno = data.get('seqNo')
-        BwlList2Head = self.sql.select('BwlHeadType', 'Id', where={'SeqNo': seqno})
+        BwlList2Head = self.sql.select('SpecialBwlHeadType', 'Id', where={'SeqNo': seqno})
         if BwlList2Head:
             BwlList2Head = BwlList2Head[0][0]
         else:
@@ -55,7 +55,7 @@ class SpecialBwlListSpider(BwlListSpider):
             else:
                 d.pop(k)
         self.sql.insert('SpecialBwlListType', **d)
-        log.info('物流账册{}已更新单损耗序号：{}'.format(bwlno, data['gdsSeqNo']))
+        log.info('物流账册{}已更新標體序号：{}'.format(bwlno, data['gdsSeqNo']))
 
     @error_2_send_email
     def update_bwl_head_db(self, bwlno, seqNo):

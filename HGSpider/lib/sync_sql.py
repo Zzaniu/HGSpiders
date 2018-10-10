@@ -20,6 +20,7 @@ class SyncSqlGold(object):
         self.sync_npts_db()
         self.sync_nems_db()
         self.sync_bwl_db()
+        self.sync_special_bwl_db()
 
     def sync_npts_db(self):
         self.sync_npts_head()
@@ -36,6 +37,10 @@ class SyncSqlGold(object):
     def sync_bwl_db(self):
         self.sync_bwl_head()
         self.sync_bwl_list()
+
+    def sync_special_bwl_db(self):
+        self.sync_special_bwl_head()
+        self.sync_special_bwl_list()
 
     def get_distinct_seqno(self, sql, table_name):
         """获取表中所有不重复的SEQNO"""
@@ -115,6 +120,10 @@ class SyncSqlGold(object):
 
     def sync_bwl_head(self):
         miss_seqno_list = self.get_bwl_miss_seqno_list('BwlHeadType')
+        self.sync_bwl_seqno(miss_seqno_list, 'SpecialBwlHeadType')
+
+    def sync_special_bwl_head(self):
+        miss_seqno_list = self.get_bwl_miss_seqno_list('SpecialBwlHeadType')
         self.sync_bwl_seqno(miss_seqno_list, 'BwlHeadType')
 
     def sync_update_2_max(self, table_name, field, seqno):
@@ -164,6 +173,10 @@ class SyncSqlGold(object):
         self.sync_bwl_seqno(miss_seqno_list, 'BwlListType')
         self.sync_update_bwl_list('BwlListType', 'GdsSeqno')
 
+    def sync_special_bwl_list(self):
+        miss_seqno_list = self.get_bwl_miss_seqno_list('SpecialBwlListType')
+        self.sync_bwl_seqno(miss_seqno_list, 'SpecialBwlListType')
+        self.sync_update_bwl_list('SpecialBwlListType', 'GdsSeqno')
 
     def get_local_db_max_or_min_gdsseqno(self, sql, tabname, field, seqNo, max=True):
         if max:

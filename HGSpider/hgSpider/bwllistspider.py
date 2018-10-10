@@ -79,7 +79,7 @@ class BwlListSpider(BaseCls):
             else:
                 d.pop(k)
         self.sql.insert('BwlListType', **d)
-        log.info('物流账册{}已更新单损耗序号：{}'.format(bwlno, data['gdsSeqNo']))
+        log.info('物流账册{}已更新標體序号：{}'.format(bwlno, data['gdsSeqNo']))
 
     def get_local_db_max_or_min_gseqno(self, seqno, max=True):
         if max:
