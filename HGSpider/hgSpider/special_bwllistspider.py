@@ -55,12 +55,12 @@ class SpecialBwlListSpider(BwlListSpider):
             else:
                 d.pop(k)
         self.sql.insert('SpecialBwlListType', **d)
-        log.info('物流账册{}已更新標體序号：{}'.format(bwlno, data['gdsSeqNo']))
+        log.info('物流账册{}[SeqNo:{}]已更新標體序号：{}'.format(bwlno, seqno, data['gdsSeqNo']))
 
     @error_2_send_email
     def update_bwl_head_db(self, bwlno, seqNo):
         """插入表头"""
-        if self.sql.select('BwlHeadType', 'id', where={'SeqNo': seqNo}):
+        if self.sql.select('SpecialBwlHeadType', 'id', where={'SeqNo': seqNo}):
             log.info('物流账册号{},seq-{}已存在'.format(bwlno, seqNo))
             return True
         head_dict = self.get_bwl_head_info(seqNo).get('data')
@@ -111,15 +111,24 @@ class SpecialBwlListSpider(BwlListSpider):
         try:
             ret = self.sql.insert('SpecialBwlHeadType', **d)
         except Exception as e:
-            log.info('物流账册号{},seq-{}估计是暂存的数据，数据不完整，跳过爬取'.format(bwlno, seqNo))
+            log.info('物流账册号{}[SeqNo:{}]估计是暂存的数据，数据不完整，跳过爬取'.format(bwlno, seqNo))
             return True
         if ret:
-            log.info('手册号{}已插入表头信息'.format(bwlno))
+            log.info('物流账册号{}[SeqNo:{}]已插入表头信息'.format(bwlno, seqNo))
             return True
         else:
-            log.error('手册号{}插入表头信息失败，请检查..'.format(bwlno))
+            log.error('物流账册号{}[SeqNo:{}]插入表头信息失败，请检查..'.format(bwlno, seqNo))
             # raise Exception('手册号{}插入表头信息失败，请检查..'.format(bwlno))
 
+    def get_local_db_max_or_min_gseqno(self, seqno, max=True):
+        if max:
+            _sql = "SELECT max(GdsSeqno) as gdsSeqno FROM SpecialBwlListType WHERE SeqNo = %s"
+        else:
+            _sql = "SELECT min(GdsSeqno) as gdsSeqno FROM SpecialBwlListType WHERE SeqNo = %s"
+        ret = self.sql.raw_sql(_sql, seqno)
+        if ret.get('status'):
+            gdsSeqno = ret['ret_tuples'][0][0]
+            return gdsSeqno
 
 if __name__ == "__main__":
     a = SpecialBwlListSpider()

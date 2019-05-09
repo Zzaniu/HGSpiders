@@ -3,8 +3,9 @@ import random
 import time
 
 import requests
-
+import traceback
 from conf import settings
+from hgSpider.basecls import MySession
 from lib import aniusql
 from lib.log import getSpiderLogger
 log = getSpiderLogger()
@@ -12,9 +13,9 @@ log = getSpiderLogger()
 
 class CiqSpider(object):
     def __init__(self):
-        self.sql = aniusql.Sql(settings.DATABASES_GOLD_8_1)
+        self.sql = aniusql.Sql(settings.DATABASES)
         self.url = "http://service.bjciq.gov.cn/ciq_entServiceSystem_ENT//framework/ciqCodeAjax/QueryCIQRelateHS/list.do"
-        self.session = requests.session()
+        self.session = MySession()
         self.session.headers = {
             "Accept": "application/json, text/javascript, */*; q=0.01",
             "Accept-Language": "zh-CN,zh;q=0.9",
@@ -62,8 +63,9 @@ class CiqSpider(object):
             codets_list = self.sql.select('Commodity', 'codets', limit=[i, 50])
             for codets in codets_list:
                 self.postdata.update(s_hsCode=codets.get('codets'))
-                http_res = self.session.post(self.url, data=self.postdata, timeout=20)
+                http_res = self.session.post(self.url, data=self.postdata, timeout=30)
                 for data in json.loads(http_res.text).get('aaData'):
+                    print('codets = ', codets.get('codets'), ', data = ', data)
                     HsCode = data.get('statCode')[0:10]
                     CiqCode = data.get('statCode')[-3:]
                     GoodsName = data.get('statCname')

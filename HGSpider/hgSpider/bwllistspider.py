@@ -51,6 +51,7 @@ class BwlListSpider(BaseCls):
     @error_2_send_email
     def update_db_list(self, data, bwlno):
         seqno = data.get('seqNo')
+        print('data = ', data)
         BwlList2Head = self.sql.select('BwlHeadType', 'Id', where={'SeqNo': seqno})
         if BwlList2Head:
             BwlList2Head = BwlList2Head[0][0]
@@ -79,7 +80,8 @@ class BwlListSpider(BaseCls):
             else:
                 d.pop(k)
         self.sql.insert('BwlListType', **d)
-        log.info('物流账册{}已更新標體序号：{}'.format(bwlno, data['gdsSeqNo']))
+
+        log.info('物流账册{}[SeqNo:{}]已更新標體序号：{}'.format(bwlno, seqno, data['gdsSeqNo']))
 
     def get_local_db_max_or_min_gseqno(self, seqno, max=True):
         if max:
@@ -150,11 +152,11 @@ class BwlListSpider(BaseCls):
         }
         postdata = {
             "page": {"curPage": page, "pageSize": settings.pageSize},
-            "queryType": "B", "operType": "0", "seqNo": seqno,
+            "queryType": "B", "operType": "0", "seqNo": seqno, "operCusRegCode": '4403180896',
         }
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
-        http_res = self.session.post(self.RealListUrl, data=json.dumps(postdata), timeout=10)
+        http_res = self.session.post(self.RealListUrl, data=json.dumps(postdata), timeout=30)
         response_dict = json.loads(http_res.text)
         return response_dict
 
@@ -212,13 +214,13 @@ class BwlListSpider(BaseCls):
         try:
             ret = self.sql.insert('BwlHeadType', **d)
         except Exception as e:
-            log.info('物流账册号{},seq-{}估计是暂存的数据，数据不完整，跳过爬取'.format(bwlno, seqNo))
+            log.info('物流账册号{}[SeqNo:{}]估计是暂存的数据，数据不完整，跳过爬取'.format(bwlno, seqNo))
             return True
         if ret:
-            log.info('手册号{}已插入表头信息'.format(bwlno))
+            log.info('手册号{}[SeqNo:{}]已插入表头信息'.format(bwlno, seqNo))
             return True
         else:
-            log.error('手册号{}插入表头信息失败，请检查..'.format(bwlno))
+            log.error('手册号{}[SeqNo:{}]插入表头信息失败，请检查..'.format(bwlno, seqNo))
             # raise Exception('手册号{}插入表头信息失败，请检查..'.format(bwlno))
 
     def get_bwl_head_info(self, seqNo):
@@ -241,7 +243,7 @@ class BwlListSpider(BaseCls):
         postdata = {"seqNo": seqNo, "operCusRegCode": "4403180896"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
-        http_res = self.session.post(self.RealHeadUrl, data=json.dumps(postdata), timeout=20)
+        http_res = self.session.post(self.RealHeadUrl, data=json.dumps(postdata), timeout=30)
         return json.loads(http_res.text)
 
     @error_2_send_email
@@ -265,13 +267,13 @@ class BwlListSpider(BaseCls):
         self.session.cookies.update(self.get_cookie())
         for i in self.CompanyList:
             postdata['selTradeCode'] = i
-            http_res = self.session.post(self.QueryUrl, data=json.dumps(postdata), timeout=20)
+            http_res = self.session.post(self.QueryUrl, data=json.dumps(postdata), timeout=30)
             try:
                 response_dict = json.loads(http_res.text)
                 yield i, response_dict
             except:
                 self.session.cookies.update(self.get_cookie(LOCAL_COOKIE_FLG=False))
-                http_res = self.session.post(self.QueryUrl, data=json.dumps(postdata), timeout=20)
+                http_res = self.session.post(self.QueryUrl, data=json.dumps(postdata), timeout=30)
                 try:
                     response_dict = json.loads(http_res.text)
                     yield i, response_dict
@@ -323,8 +325,59 @@ class BwlListSpider(BaseCls):
                 continue
 
 
+class BwlList2Nems(BwlListSpider):
+    """返填核注清单"""
+
+    def return_nems(self, data):
+        invtNo = data['invtNo']  # 海关编号
+        invtGNo = data['invtGNo']  # 商品序号
+        nid = self.sql.select('NRelation', 'Id', where={'QpEntryId': invtNo, 'DeleteFlag': 0})
+        if not nid: return
+        nid = nid[0][0]
+        nems_head_id = self.sql.select('NemsInvtHeadType', 'Id', where={'NId': nid})
+        if not nems_head_id: return
+        nems_head_id = nems_head_id[0][0]
+        self.sql.update('NemsInvtListType', where={'FKey': nems_head_id, 'GdsSeqno': invtGNo}, PutrecSeqno=data.get('gdsSeqNo'))
+
+    @error_2_send_email
+    def update_db_list(self, data, bwlno):
+        seqno = data.get('seqNo')
+        print('data = ', data)
+        BwlList2Head = self.sql.select('BwlHeadType', 'Id', where={'SeqNo': seqno})
+        if BwlList2Head:
+            BwlList2Head = BwlList2Head[0][0]
+        else:
+            raise Exception('SeqNo:{}發生錯誤，表頭數據不存在'.format(seqno))
+        d = {
+            'SeqNo': seqno,
+            'GdsSeqno': data.get('gdsSeqNo'),
+            'GdsMtno': data.get('gdsMtno'),
+            'Gdecd': data.get('gdecd'),
+            'GdsNm': data.get('gdsNm'),
+            'GdsSpcfModelDesc': data.get('gdsSpcfModelDesc'),
+            'Natcd': data.get('natCd'),
+            'DclUnitcd': data.get('dclUnitCd'),
+            'LawfUnitcd': data.get('lawfUnitCd'),
+            'DclUprcAmt': data.get('dclUprcAmt'),
+            'DclCurrcd': data.get('dclCurrCd'),
+            'LimitDate': data.get('limitDate'),
+            'SecdLawfUnitcd': data.get('secdLawfUnitCd'),
+            'BwlList2Head': BwlList2Head,
+        }
+        _d = copy.deepcopy(d)
+        for k in _d:
+            if _d[k]:
+                pass
+            else:
+                d.pop(k)
+        self.sql.insert('BwlListType', **d)
+        self.return_nems(data)
+        log.info('物流账册{}[SeqNo:{}]已更新標體序号：{}'.format(bwlno, seqno, data['gdsSeqNo']))
+
+
 if __name__ == "__main__":
-    a = BwlListSpider()
+    # a = BwlListSpider()
+    a = BwlList2Nems()
     a.get_info()
     # for i, response_dict in a.get_company_seqno():
     #     print('i = ', i, 'response_dict = ', response_dict)

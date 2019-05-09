@@ -12,8 +12,8 @@ from lib.log import getSpiderLogger, singleton
 log = getSpiderLogger()
 
 
-@singleton
-class singletonPoolDB(PooledDB):
+# @singleton
+class SingletonPoolDB(PooledDB):
     """单例数据库连接池"""
     pass
 
@@ -47,7 +47,7 @@ class Sql(object):
                 'ping': 0,
             }
             try:
-                _pool = singletonPoolDB(pymysql, **d, **databases)
+                _pool = SingletonPoolDB(pymysql, **d, **databases)
                 return _pool
             except:
                 log.debug('创建连接池失败，暂停{}S后继续创建'.format(settings.RE_CONNECT_SQL_WAIT_TIME))
@@ -65,10 +65,13 @@ class Sql(object):
         sql = 'insert into {}({}) VALUES ({});'.format(table_name, cols, wildcards)
         try:
             self.cursor.execute(sql, args=vals)
+            if self.cursor.description:
+                names = [x[0] for x in self.cursor.description]
+                print('name = ', names)
             self.conn.commit()
             return True
         except:
-            log.error('数据库发生错误，错误信息{}'.format(str(traceback.format_exc())))
+            log.error('数据库发生错误，错误信息{},sql={}, vals={}'.format(str(traceback.format_exc()), sql, vals))
             self.conn.rollback()
             return False
 
@@ -115,7 +118,10 @@ class Sql(object):
             log.error("error = {}".format(e))
             return False
 
-    def select(self, table_name, *cols, where=None, limit=None):
+    def _select(self):
+        pass
+
+    def select(self, table_name, *cols, where=None, limit=None, first=False):
         """
         :param table_name: 表名,str
         :param cols: 列名
@@ -124,37 +130,66 @@ class Sql(object):
         SELECT * FROM DecMsg where ClientSeqNo="201801100950223990" and DeleteFlag="0"
         :return:
         """
-        filter_condition = "where "  # 筛选条件,暂时只支持一个查询条件
+        if limit:
+            assert len(limit) == 2, 'limit 格式错误，格式类似[0, 10]'
+        filter_condition = ""  # 筛选条件,暂时只支持一个查询条件
         vals=tuple()
         if where:
             vals=tuple(where.values())
             for i,k in enumerate(where):
-
                 if len(vals)==1:
-                    filter_condition += '{}=%s'.format(k)
+                    if k.endswith('__gt'):
+                        filter_condition += 'where {}>%s'.format(k[:-4])
+                    elif k.endswith('__lt'):
+                        filter_condition += 'where {}<%s'.format(k[:-4])
+                    else:
+                        filter_condition += 'where {}=%s'.format(k)
                 else:
                     if i==0:
-                        filter_condition+='{}=%s'.format(k)
+                        if k.endswith('__gt'):
+                            filter_condition += 'where {}>%s'.format(k[:-4])
+                        elif k.endswith('__lt'):
+                            filter_condition += 'where {}<%s'.format(k[:-4])
+                        else:
+                            filter_condition += 'where {}=%s'.format(k)
                     else:
-                        filter_condition += ' and {}=%s'.format(k)
+                        if k.endswith('__gt'):
+                            filter_condition += ' and {}>%s'.format(k[:-4])
+                        elif k.endswith('__lt'):
+                            filter_condition += ' and {}<%s'.format(k[:-4])
+                        else:
+                            filter_condition += ' and {}=%s'.format(k)
 
         if not cols and not limit:  # select * ,无limit
             sql = 'select * from {} {};'.format(table_name,filter_condition)
         elif limit:
             if not cols:  # select * 有limit
-                sql = 'select * from {} {} limit {};'.format(table_name,filter_condition, limit)
+                sql = 'select * from {} {} limit {},{};'.format(table_name,filter_condition, limit[0], limit[1])
             else:  # select x1,x2 有limit
                 col_names = ",".join(cols)
-                sql = 'select {} from {} {} limit {};'.format(col_names, table_name,filter_condition, limit)
+                sql = 'select {} from {} {} limit {},{};'.format(col_names, table_name,filter_condition, limit[0], limit[1])
         else:
             # no limit,有col值
             col_names = ",".join(cols)
             sql = 'select {} from {} {};'.format(col_names, table_name,filter_condition)
 
         self.cursor.execute(sql, vals)
+        if self.cursor.description:
+            names = [x[0] for x in self.cursor.description]
+
         self.conn.commit()
-        ret = self.cursor.fetchall()
-        return ret
+        if first:
+            ret = self.cursor.fetchone()
+            if ret:
+                return dict(zip(names, ret))
+            else:
+                return None
+        result = self.cursor.fetchall()
+        rets = [x for x in result]
+        ret_dict = []
+        for ret in rets:
+            ret_dict.append(dict(zip(names, ret)))
+        return ret_dict
 
     def all(self, table_name, *cols):
         col_names = ",".join(cols)
@@ -225,9 +260,12 @@ class Sql(object):
         return ret
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sql = Sql(settings.DATABASES_GOLD_8_1)
-    d = {
-        'ApprNo': '大爷',
-    }
-    sql.update('DecHead', where={'DecHeadId': 5, 'SeqNo': 123987}, **d)
+    rets = sql.select('Msg')
+    for ret in rets:
+        ret.pop('id')
+        sql.insert("Msg", **ret)
+    # ret.pop('id')
+    # ret = sql.insert('Msg', **ret)
+    print("程序执行完毕...")

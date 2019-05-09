@@ -10,6 +10,8 @@ from hgSpider.bwllistspider import BwlListSpider
 from hgSpider.special_bwllistspider import SpecialBwlListSpider
 from hgSpider.nptsspider import NptsSpider
 from hgSpider.nemsspider import NemsSpider
+from dgHgspider.dg_nemsspider import DgNemsSpider
+from dgHgspider.dg_nptsspider import DgNptsSpider
 from lib.sync_sql import SyncSqlGold
 
 
@@ -38,13 +40,20 @@ def sync_db():
     obj.run_sync()
 
 
-if __name__ == "__main__":
+def runDgNemsSpider():
+    DgNemsSpider().get_info()
+
+
+def runDgNptsSpider():
+    DgNptsSpider().get_info()
+
+
+def run_spider():
     t1 = Process(target=runBwlSpider)
     t2 = Process(target=runSpecialBwlSpider)
     t3 = Process(target=runNptsSpider)
     t4 = Process(target=runNemsSpider)
-    # threads = [t1, t2, t3, t4]
-    threads = [t3,]
+    threads = [t1, t2, t3, t4]
     for i in threads:
         i.start()
         time.sleep(10)
@@ -54,4 +63,22 @@ if __name__ == "__main__":
 
     sync_db()  # 同步数据库
 
+    print('深圳程序执行完毕...')
+
+
+def run_dg_spider():
+    runDgNemsSpider()
+    runDgNptsSpider()
+    print('东莞程序执行完毕...')
+
+
+def run():
+    run_spider()
+    run_dg_spider()
     print('程序执行完毕...')
+
+
+if __name__ == "__main__":
+    run_spider()  # 爬取深圳数据
+    # run_dg_spider()  # 爬取东莞数据
+    # run()  # 爬取所有

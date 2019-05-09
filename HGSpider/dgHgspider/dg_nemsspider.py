@@ -1,48 +1,53 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Date    : 2018-08-13 09:50:44
-# @Author  : zaniu (Zzaniu@126.com)
-# @Version : $Id$
+# @Date        : 2019-01-03 16:53:40
+# @Author      : zaniu (Zzaniu@126.com)
+# @Version     : $Id$
+# @Description : 东莞物流账册爬取
 import copy
 import json
 import random
 import time
 
 import sys
+import traceback
 
 from conf import settings
-from hgSpider.basecls import BaseCls
+from dgHgspider.dg_basecls import DgBaseCls
 from lib.mail import error_2_send_email
 from lib.log import getSpiderLogger
 
 log = getSpiderLogger()
 
 
-class NemsSpider(BaseCls):
-    """金二加工贸易电子帐册"""
+class DgNemsSpider(DgBaseCls):
+    """东莞加贸帐册"""
 
     def __init__(self, *args, **kwargs):
-        super(NemsSpider, self).__init__(*args, **kwargs)
-        self.CookieUrl = settings.NEMSCOOKIE_URL
-        self.RealUrl = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/atb/emsQueryListService'
-        self.RealUrl2 = r'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/atb/emsDetailService'
-        self.CompanyList = settings.NEMS_COMPANY_LIST
+        super(DgNemsSpider, self).__init__(*args, **kwargs)
+        self.CookieUrl = r'http://www.singlewindow.gd.cn/index/swProxy/deskserver/sw/deskIndex?menu_id=nems'
+        self.RealUrl = r'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/atb/emsQueryListService'
+        self.RealUrl2 = r'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/atb/emsDetailService'
+        self.CompanyList = settings.DG_NEMS_COMPANY_LIST
 
     @error_2_send_email
     def get_web_cookie(self):
         while not self.get_login_cookie():
             log.info('登陆失败，1S后重新登陆..')
             time.sleep(1)
-        self.session.get('http://sz.singlewindow.cn/dyck/swProxy/deskserver/sw/deskIndex?menu_id=nems', timeout=30)
+        self.set_js_cookie()
         headers = {
-            'Accept': 'application/json, text/javascript, */*; q=0.01',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json',
-            'Referer': None,
+            'Host': 'www.singlewindow.gd.cn',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Referer': 'http://www.singlewindow.cn/singlewindow/standard/app.jspx?area_id=440000',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
         }
-        self.session.headers.update(headers)
-        self.session.get(self.CookieUrl, timeout=30)
-        # self.session.cookies.update({"loginSignal": '0'})
+        self.session.cookies.update(self.get_cookie())
+        self.session.get(self.CookieUrl, headers=headers, timeout=30, verify=False)
         self.save_cookie()
         return self.session.cookies.get_dict()
 
@@ -85,8 +90,8 @@ class NemsSpider(BaseCls):
                         log.info('海关今日更新账册号{}的{}单损耗序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nemsno, seqNo, self.pagesize,wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
-                except Exception as e:
-                    log.info(str(e))
+                except:
+                    log.info(traceback.format_exc())
                     return
 
     @error_2_send_email
@@ -182,8 +187,8 @@ class NemsSpider(BaseCls):
                         log.info('海关今日更新账册号{}的SEQNO={}的成品序号超过50条，{}秒后将继续爬取第{}页数据..'.format(nemsno, seqNo, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
-                except Exception as e:
-                    log.info(str(e))
+                except:
+                    log.info(traceback.format_exc())
                     return
 
     @error_2_send_email
@@ -242,36 +247,33 @@ class NemsSpider(BaseCls):
     @error_2_send_email
     def get_company_seqno(self):
         """查询页面结果字典的生成器，使用yield实现"""
-        headers = {
-            "Host": "sz.singlewindow.cn",
+        header = {
+            "Host": "www.singlewindow.gd.cn",
             "Connection": "keep-alive",
             "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
+            "Origin": "http://www.singlewindow.gd.cn",
             "X-Requested-With": "XMLHttpRequest",
             "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
             "Content-Type": "application/json;charset=UTF-8",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/nemsserver/sw/ems/nems/queryQualApplication?ngBasePath=http%3A%2F%2Fsz.singlewindow.cn%3A80%2Fdyck%2FswProxy%2Fnemsserver%2F",
+            "Referer": "http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/queryCanadianTradeBooks?sysId=95&ngBasePath=http%3A%2F%2Fwww.singlewindow.gd.cn%3A80%2Findex%2FswProxy%2Femspubserver%2F",
             "Accept-Language": "zh-CN,zh;q=0.9",
         }
-        postdata = {"sysId": "95", "status": " ", "statusName": "全部", "selTradeCode": "", "etArcrpNo": "",
-                    "seqNo": "", "bizopEtpsno": "", "bizopEtpsSccd": "", "inputDateStart": "", "inputDateEnd": "",
-                    "inputCode": "4403180896"}
-        self.session.headers.update(headers)
+        postdata = {"sysId": "95", "status": " ", "statusName": "全部", "selTradeCode": "", "emsNo": "", "seqNo": "",
+                    "bizopEtpsno": "", "bizopEtpsSccd": "", "inputTimeStart": "", "inputTimeEnd": "",
+                    "inputCode": "4419W4K601"}
         self.session.cookies.update(self.get_cookie())
-        for i in self.CompanyList:
-            postdata['selTradeCode'] = i
-            http_res = self.session.post(self.RealUrl, data=json.dumps(postdata), timeout=30)
-            if i == "4403140Q0P":
-                print('http_res = ', http_res.text)
+        for company_code in self.CompanyList:
+            postdata['selTradeCode'] = company_code
+            http_res = self.session.post(self.RealUrl, headers=header, data=json.dumps(postdata), timeout=30, verify=False)
             try:
                 response_dict = json.loads(http_res.text)
-                yield i, response_dict
+                yield company_code, response_dict
             except:
                 self.session.cookies.update(self.get_cookie(LOCAL_COOKIE_FLG=False))
-                http_res = self.session.post(self.RealUrl, data=json.dumps(postdata), timeout=30)
+                http_res = self.session.post(self.RealUrl, data=json.dumps(postdata), timeout=30, verify=False)
                 try:
                     response_dict = json.loads(http_res.text)
-                    yield i, response_dict
+                    yield company_code, response_dict
                 except:
                     raise Exception('获取公司seqNo失败，请检查程序...')
 
@@ -279,23 +281,24 @@ class NemsSpider(BaseCls):
     def get_nems_head_info(self, seqNo):
         """获取表头数据"""
         headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json;charset=UTF-8",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/".format(
-                seqNo),
-            "Accept-Language": "zh-CN,zh;q=0.9",
-            'Cache-Control': None,
-            'Content-Length': None,
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json;charset=UTF-8',
+            'Host': 'www.singlewindow.gd.cn',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'Pragma': 'no-cache',
+            'Proxy-Connection': 'keep-alive',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/emspubserver/&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/emspubserver/'.format(seqNo),
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'X-Requested-With': 'XMLHttpRequest',
         }
         postdata = {"seqNo": seqNo, "sysId": "95"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
-        http_res = self.session.post(self.RealUrl2, data=json.dumps(postdata), timeout=30)
+        http_res = self.session.post(self.RealUrl2, data=json.dumps(postdata), timeout=30, verify=False)
+        print('http_res.text = ', http_res.text)
         return json.loads(http_res.text)
 
     @error_2_send_email
@@ -473,28 +476,27 @@ class NemsSpider(BaseCls):
                         log.info('海关今日更新账册号{}的{}料件序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nemsno, seqNo, self.pagesize, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
-                except Exception as e:
-                    log.info(str(e))
-                    if str(e).find("海关暂无相关账册") > -1:
-                        raise Exception('跳过爬取')
+                except:
+                    log.info(traceback.format_exc())
                     return
 
     @error_2_send_email
     def get_nems_img_list_info(self, page, seqNo):
         """料件"""
-        url = 'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/atb/emsGoodsQueryService'
+        url = 'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/atb/emsGoodsQueryService'
         headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Content-Length": "132",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/".format(
-                seqNo),
-            "Accept-Language": "zh-CN,zh;q=0.9",
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json',
+            'Host': 'www.singlewindow.gd.cn',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'Pragma': 'no-cache',
+            'Proxy-Connection': 'keep-alive',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/emspubserver/&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/emspubserver/'.format(seqNo),
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'X-Requested-With': 'XMLHttpRequest',
         }
         data = {
             "copGNo": "",
@@ -507,23 +509,25 @@ class NemsSpider(BaseCls):
         }
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
-        http_res = self.session.post(url, data=json.dumps(data), timeout=30)
+        http_res = self.session.post(url, data=json.dumps(data), timeout=30, verify=False)
         return json.loads(http_res.text)
 
     def get_nems_cm_list_info(self, page, seqNo):
         """单损耗"""
-        url = 'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/atb/emsGoodsQueryService'
+        url = 'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/atb/emsGoodsQueryService'
         headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/".format(
-                seqNo),
-            "Accept-Language": "zh-CN,zh;q=0.9",
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json',
+            'Host': 'www.singlewindow.gd.cn',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'Pragma': 'no-cache',
+            'Proxy-Connection': 'keep-alive',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/emspubserver/&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/emspubserver/'.format(seqNo),
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'X-Requested-With': 'XMLHttpRequest',
         }
         data = {"exgGNo": "", "imgGNo": "", "exgVersion": "", "page": {"curPage": page, "pageSize": self.pagesize},
                 "operType": "0", "seqNO": seqNo, "queryType": "Cm"}
@@ -535,18 +539,20 @@ class NemsSpider(BaseCls):
     @error_2_send_email
     def get_nems_exg_list_info(self, page, seqNo):
         """成品"""
-        url = 'http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/atb/emsGoodsQueryService'
+        url = 'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/atb/emsGoodsQueryService'
         headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/emspubserver/".format(
-                seqNo),
-            "Accept-Language": "zh-CN,zh;q=0.9",
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Content-Type': 'application/json',
+            'Host': 'www.singlewindow.gd.cn',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'Pragma': 'no-cache',
+            'Proxy-Connection': 'keep-alive',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/emspubserver/sw/ems/pub/canadianTradeBooks?sysId=95&flag=view&seqNo={}&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/emspubserver/&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/emspubserver/'.format(seqNo),
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'X-Requested-With': 'XMLHttpRequest',
         }
         data = {"copGNo": "", "gdecd": "", "gdeNm": "", "page": {"curPage": page, "pageSize": self.pagesize}, "operType": "0",
                 "seqNO": seqNo, "queryType": "Exg"}
@@ -559,24 +565,16 @@ class NemsSpider(BaseCls):
         for i, response_dict in self.get_company_seqno():
             for obj in response_dict.get('rows'):
                 seqNo = obj.get('seqNo')
-                if obj.get('emsNo'):
-                    self.get_nems_info(i, seqNo)
-                else:
-                    log.warning('账册号{}的预录入统一编号{}查询页面没有加工贸易账册编号，跳过爬取'.format(i, seqNo))
+                self.get_nems_info(i, seqNo)
 
     def get_nems_info(self, nemsno, seqNo):
         """这里可以考虑做成多线程，主要是怕把海关搞挂了，对性能也没有要求，就先单线程跑着吧"""
-        try:
-            self.update_nems_head_db(nemsno, seqNo)
-            self.update_nems_img_list_info(nemsno, seqNo)
-            self.update_nems_exg_list_info(nemsno, seqNo)
-            # self.update_nems_cm_list_info(nemsno, seqNo)
-        except:
-            pass
+        self.update_nems_head_db(nemsno, seqNo)
+        self.update_nems_img_list_info(nemsno, seqNo)
+        self.update_nems_exg_list_info(nemsno, seqNo)
+        # self.update_nems_cm_list_info(nemsno, seqNo)
 
 
 if __name__ == "__main__":
-    nems_obj = NemsSpider()
+    nems_obj = DgNemsSpider()
     nems_obj.get_info()
-    # for i in nems_obj.get_company_seqno():
-    #     print('i = ', i)

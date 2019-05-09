@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Date    : 2018-08-13 11:53:12
 # @Author  : zaniu (Zzaniu@126.com)
@@ -12,6 +12,7 @@ from conf import settings
 import threading
 import functools
 import concurrent_log_handler
+
 
 def singleton(func):
     """单例装饰器函数"""

@@ -4,6 +4,7 @@
 # @Author  : zaniu (Zzaniu@126.com)
 # @Version : $Id$
 
+import functools
 import os
 import re
 import json
@@ -13,6 +14,7 @@ import hashlib
 import requests
 from aip import AipOcr
 from PIL import Image
+from requests import Session
 from conf import settings
 from lib.sql import Sql
 from lib.mail import error_2_send_email
@@ -20,6 +22,42 @@ from lib.log import getSpiderLogger
 import multiprocessing
 
 log = getSpiderLogger()
+
+
+def my_retry(_time_out=3):
+    """带参数装饰器函数，爬取的时候自动重试三次"""
+    a = {'_time_out': _time_out}
+
+    def func1(f):
+        @functools.wraps(f)
+        def func2(*args, **kwargs):
+            _time_out = a['_time_out']  # 不能直接使用a['_time_out']-=1，因为a只初始化一次，但函数会执行多次
+            while _time_out > 0:
+                _time_out -= 1
+                try:
+                    return f(*args, **kwargs)
+                except:
+                    pass
+            return f(*args, **kwargs)
+        return func2
+    return func1
+
+
+class MySession(Session):
+    __attrs__ = [
+        'headers', 'cookies', 'auth', 'proxies', 'hooks', 'params', 'verify',
+        'cert', 'prefetch', 'adapters', 'stream', 'trust_env',
+        'max_redirects',
+    ]
+
+    @my_retry()
+    def post(self, url, data=None, json=None, **kwargs):
+        return self.request('POST', url, data=data, json=json, **kwargs)
+
+    @my_retry()
+    def get(self, url, **kwargs):
+        kwargs.setdefault('allow_redirects', True)
+        return self.request('GET', url, **kwargs)
 
 
 class BaseCls(object):
@@ -31,8 +69,9 @@ class BaseCls(object):
         self.ImageDir2 = settings.IMAGE_DIR2
         self.CookieDir = settings.COOKIE_DIR
         self.aipOcr = AipOcr(settings.APP_ID, settings.API_KEY, settings.SECRET_KEY)
-        self.session = requests.session()
-        self.sql = Sql(settings.DATABASES_SERVER)
+        # self.session = requests.session()
+        self.session = MySession()
+        self.sql = Sql(settings.DATABASES)
         self.pagesize = settings.pageSize
 
     def get_file_content(self):
@@ -58,14 +97,14 @@ class BaseCls(object):
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36",
                 "Connection": "keep-alive",
             }
-        res = self.session.get(self.IndexUrl, headers=headers, timeout=20)
+        res = self.session.get(self.IndexUrl, headers=headers, timeout=30)
         content = etree.HTML(res.text)
         lt = content.xpath(r'//*[@id="fm1"]/p[1]/input[1]/@value')[0]
         execution = content.xpath(r'//*[@id="fm1"]/p[1]/input[2]/@value')[0]
         return lt, execution
 
     @error_2_send_email
-    def know_Image(self, headers=None, timeout=20):
+    def know_Image(self, headers=None, timeout=30):
         start_time = time.time()
         used_time = 0
         ret = {'value': None, 'error': None}
@@ -77,7 +116,7 @@ class BaseCls(object):
         code_count = 0
         while used_time < timeout:
             code_count += 1
-            res = self.session.get(self.ImageUrl, headers=headers, timeout=20)
+            res = self.session.get(self.ImageUrl, headers=headers, timeout=30)
             with open(self.ImageDir, "wb") as f:
                 f.write(res.content)
             value = self.aipOcr.basicGeneral(self.get_file_content(), settings.OPTIONS)
@@ -121,7 +160,7 @@ class BaseCls(object):
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36',
         }
         self.session.headers.update(header)
-        res = self.session.post(self.IndexUrl, data=data, timeout=20)
+        res = self.session.post(self.IndexUrl, data=data, timeout=30)
         if res.text.find("登录成功") > 0:
             log.info('模拟登陆成功！！！')
             return True
@@ -157,6 +196,6 @@ class BaseCls(object):
             'Referer': None,
         }
         self.session.headers.update(headers)
-        self.session.get(self.CookieUrl, timeout=20)
+        self.session.get(self.CookieUrl, timeout=30)
         self.save_cookie()
         return self.session.cookies.get_dict()

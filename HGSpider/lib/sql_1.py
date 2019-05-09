@@ -3,60 +3,36 @@ import traceback
 
 import pymysql
 import re
-
-from DBUtils.PooledDB import PooledDB
-
 from conf import settings
-from lib.log import getSpiderLogger, singleton
+from lib.log import getSpiderLogger
 
 log = getSpiderLogger()
 
 
-@singleton
-class singletonPoolDB(PooledDB):
-    """单例数据库连接池"""
-    pass
-
-
 class Sql(object):
-    def __init__(self, databases):
-        self.__pool = self.connect_mysql(databases)
-        self.conn = self.__pool.connection()
-        self.cursor = self.conn.cursor()
+    def __init__(self):
+        self.conn, self.cursor = self.connect_mysql()
 
     def __del__(self):
-        """退出时释放资源"""
-        if self.cursor:
-            self.cursor.close()
-        if self.conn:
-            self.conn.close()
+        """退出时关闭与数据库的连接"""
+        self.cursor.close()
+        self.conn.close()
 
     @staticmethod
-    def connect_mysql(databases):
-        """单例模式，会防止创建多个连接池"""
-        times = settings.RE_CONNECT_SQL_TIME
-        while times > 0:
-            d = {
-                'mincached': 5,  # 初始化时，链接池中至少创建的空闲的链接，0表示不创建
-                'maxcached': 5,  # 链接池中最多闲置的链接，0和None不限制
-                'maxshared': 0,
-            # 链接池中最多共享的链接数量，0和None表示全部共享。PS: 无用，因为pymysql和MySQLdb等模块的 threadsafety都为1，所有值无论设置为多少，_maxshared永远为0，所以永远是所有链接都共享。
-                'maxconnections': 20,  # 连接池允许的最大连接数，0和None表示不限制连接数
-                'blocking': True,  # 连接池中如果没有可用连接后，是否阻塞等待。True，等待；False，不等待然后报错
-                'maxusage': None,  # 一个链接最多被重复使用的次数，None表示无限制
-                'ping': 0,
-            }
+    def connect_mysql():
+        while True:
             try:
-                _pool = singletonPoolDB(pymysql, **d, **databases)
-                return _pool
+                conn = pymysql.connect(**settings.DATABASES)
+                cursor = conn.cursor()
+                break
             except:
-                log.debug('创建连接池失败，暂停{}S后继续创建'.format(settings.RE_CONNECT_SQL_WAIT_TIME))
-                print('创建连接池失败，暂停{}S后继续创建'.format(settings.RE_CONNECT_SQL_WAIT_TIME))
-                times -= 1
+                settings.RE_CONNECT_SQL_TIME -= 1
                 time.sleep(settings.RE_CONNECT_SQL_WAIT_TIME)
-
-        log.error('数据库连接失败...')
-        raise Exception('数据库连接失败...')
+                if settings.RE_CONNECT_SQL_TIME < 0:
+                    log.error('数据库连接失败...')
+                    raise Exception('数据库连接失败...')
+                continue
+        return conn, cursor
 
     def insert(self, table_name, **kwargs):
         keys, vals = tuple(kwargs.keys()), tuple(kwargs.values())
@@ -72,28 +48,19 @@ class Sql(object):
             self.conn.rollback()
             return False
 
-    def update(self,table_name,where=None,no_where=False, **kwargs):
+    def update(self,table_name,where=None, **kwargs):
         """
         :param table_name:
         :param cols:
         :param where:
         :return:
         """
-        if not no_where:
-            assert where is not None, 'update 操作必须带where条件'
         filter_condition = ""  # 筛选条件
         vals_condition = tuple()
         if where:
             vals_condition = tuple(where.values())
-            lens = len(where.items())
-            for i, k in enumerate(where):
-                if lens == 1:
-                    filter_condition += "where {}=%s".format(k)
-                else:
-                    if i == 0:
-                        filter_condition += "where {}=%s".format(k)
-                    else:
-                        filter_condition += " AND {}=%s".format(k)
+            for k, v in where.items():
+                filter_condition += "where {}=%s".format(k)
 
         keys, vals = tuple(kwargs.keys()), tuple(kwargs.values())
         cols = ",".join(keys)
@@ -114,6 +81,8 @@ class Sql(object):
             self.conn.rollback()
             log.error("error = {}".format(e))
             return False
+
+
 
     def select(self, table_name, *cols, where=None, limit=None):
         """
@@ -207,11 +176,11 @@ class Sql(object):
             log.error("error = {}".format(e))
             return False
 
-    def raw_sql(self, _sql, *args):
+    def raw_sql(self, _sql):
         """支持原生SQL"""
         ret = {'status': False, 'ret_tuples': ()}
         try:
-            lines = self.cursor.execute(_sql, args)
+            lines = self.cursor.execute(_sql)
             self.conn.commit()
             if lines:
                 ret['status'] = True
@@ -225,9 +194,29 @@ class Sql(object):
         return ret
 
 
-if __name__ == '__main__':
-    sql = Sql(settings.DATABASES_GOLD_8_1)
-    d = {
-        'ApprNo': '大爷',
-    }
-    sql.update('DecHead', where={'DecHeadId': 5, 'SeqNo': 123987}, **d)
+def update_hs_gmodels_other():
+    """更新商品编码表gmodel其它信息"""
+    sql = Sql()
+    _sql = 'select id, gmodel from Commodity'
+    gmodel_obj = sql.raw_sql(_sql)
+    index = 0
+    if gmodel_obj.get('status'):
+        for obj_list in gmodel_obj.get('ret_tuples'):
+            sql.update('Commodity', where={'id': obj_list[0]}, gmodel=obj_list[1] + '其它')
+            index += 1
+            print('已更新第{}条'.format(index))
+    print('更新完成，共更新数据{}条'.format(index))
+
+
+def functest2(tabsname, where, **kwargs):
+    sql = Sql()
+    return sql.update(tabsname, where, **kwargs)
+
+
+if __name__ == "__main__":
+    # update_hs_gmodels_other()
+    print('大爷')
+    if functest2('DecMsg', where={'DecId': 50,}, QpNotes='大爷'):
+        print('大爷好')
+    else:
+        print('大爷慢走')

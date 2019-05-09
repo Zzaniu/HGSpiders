@@ -11,7 +11,7 @@ class SyncSqlGold(object):
 
     def __init__(self):
         self.sql_gold = Sql(settings.DATABASES_GOLD_8_1)
-        self.__sql_online = Sql(settings.DATABASES_SERVER)  # 双下划綫开头，表示为私有对象，只可被类内访问，不可继承
+        self.__sql_online = Sql(settings.DATABASES)  # 双下划綫开头，表示为私有对象，只可被类内访问，不可继承
 
     def query_online(self, sql, *args):
         return self.__sql_online.raw_sql(sql, *args)
@@ -188,9 +188,35 @@ class SyncSqlGold(object):
             gdsSeqno = ret['ret_tuples'][0][0]
             return gdsSeqno
 
+    def sync_spec_bwl_list(self):
+        """此函數無用，是因為爬錯表，所以用來更新另外一張表的"""
+        seqno_list = ['201800000000030528', '201800000000030527', '201800000000030485', '201800000000005604']
+        for seqno in seqno_list:
+            ret_list = self.__sql_online.select('SpecialBwlHeadType', '*', where={'SeqNo': seqno})
+            for ret in ret_list:
+                self.sql_gold.insert('SpecialBwlHeadType', **ret)
+        for seqno in seqno_list:
+            ret_list = self.__sql_online.select('SpecialBwlListType', '*', where={'SeqNo': seqno})
+            for ret in ret_list:
+                ret.pop('Id')
+                self.sql_gold.insert('SpecialBwlListType', **ret)
+
+    def update_spec_bwl_list(self):
+        """此函數無用，更新BwlList2Head字段"""
+        seqno_list = ['201800000000030528', '201800000000030527', '201800000000030485', '201800000000005604']
+        for seqno in seqno_list:
+            id = self.sql_gold.select('SpecialBwlHeadType', 'Id', where={'SeqNo': seqno})
+            print('id = ', id)
+            if id:
+                self.sql_gold.update('SpecialBwlListType', where={'SeqNo': seqno}, BwlList2Head=id[0].get('Id'))
+
+    def update_bwl_list2head(self):
+        self.__sql_online.update('BwlListType', no_where=True, BwlList2Head=2)
+
 
 if __name__ == "__main__":
     sql = SyncSqlGold()
-    sql.run_sync()
+    # sql.run_sync()
+    sql.update_bwl_list2head()
     # ret = sql.sql_gold.raw_sql("SELECT DISTINCT SEQNO from BwlListType")
     # print('ret = ', ret)

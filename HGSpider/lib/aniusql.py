@@ -262,7 +262,7 @@ class Sql(object):
 
 if __name__ == "__main__":
     sql = Sql(settings.DATABASES_GOLD_8_1)
-    ret = sql.select('Msg', where={'id__gt': 85}, first=True)
-    # ret.pop('id')
-    # ret = sql.insert('Msg', **ret)
+    ret = sql.select('Msg', where={'id': 85}, first=True)
+    ret.pop('id')
+    ret = sql.insert('Msg', **ret)
     print("ret = ", ret)

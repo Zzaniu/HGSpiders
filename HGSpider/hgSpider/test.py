@@ -2,18 +2,11 @@ import json
 import os
 
 import requests
-import xlwt
 
 from conf import settings
-
-
-def generate_excel():
-    book = xlwt.Workbook()
-    sheet_head = book.add_sheet('表头')
-    sheet_head.write(0,0,'哈哈')
-    sheet_head.write(0,1,'')
-    sheet_head.write(0,2,'1')
-    book.save("D:\\123456.xls")
+from hgSpider.nemsspider import NemsSpider
 
 if __name__ == "__main__":
-    generate_excel()
+    a = NemsSpider()
+    n = a.get_local_db_max_or_min_gdsseqno('NemsImgList', '201800000000002529', max=False)
+    print('n = ', n)

@@ -1,3 +1,4 @@
+import socket
 import sys
 import functools
 import traceback
@@ -48,9 +49,10 @@ def error_2_send_email(func):
         try:
             return func(*args, **kwargs)
         except:
-            send_email(text=str(traceback.format_exc()), subject="爬虫程序运行出错，请前往查看")
+            send_email(text=str(traceback.format_exc()), subject="{0}-{1}，爬虫程序运行出错，请前往查看".format(
+                socket.gethostname(), socket.gethostbyname(socket.gethostname())))
             log.error("爬虫程序运行出错，请前往查看，错误信息{}".format(str(traceback.format_exc())))
-            sys.exit(-1)
+            raise SystemExit
 
     return wrapper
 

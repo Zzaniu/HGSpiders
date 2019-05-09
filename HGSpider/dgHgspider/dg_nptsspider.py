@@ -7,42 +7,68 @@ import copy
 import json
 import random
 import time
+import traceback
 
 from conf import settings
-from hgSpider.basecls import BaseCls
+from dgHgspider.dg_basecls import DgBaseCls
 from lib.mail import error_2_send_email
 from lib.log import getSpiderLogger
 
 log = getSpiderLogger()
 
 
-class NptsSpider(BaseCls):
+class DgNptsSpider(DgBaseCls):
     """金二加工贸易电子帐册"""
 
     def __init__(self, *args, **kwargs):
-        super(NptsSpider, self).__init__(*args, **kwargs)
-        self.CookieUrl = settings.NPTSCOOKIE_URL
-        self.RealUrl = r'http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml/emlQueryListService'
-        self.RealUrl2 = r'http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml/emlDetailService'
-        self.RealUrl3 = r'http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml/emlGoodsQueryService'
-        self.CompanyList = settings.NPTS_COMPANY_LIST
+        super(DgNptsSpider, self).__init__(*args, **kwargs)
+        self.CookieUrl = r'http://www.singlewindow.gd.cn/index/swProxy/deskserver/sw/deskIndex?menu_id=npts'
+        self.CompanysUrl = r'http://www.singlewindow.gd.cn/index/swProxy/nptsserver/sw/ems/npts/eml/emlQueryListService'
+        self.HeadUrl = r'http://www.singlewindow.gd.cn/index/swProxy/nptsserver/sw/ems/npts/eml/emlDetailService'
+        self.ImgAndExgUrl = r'http://www.singlewindow.gd.cn/index/swProxy/nptsserver/sw/ems/npts/eml/emlGoodsQueryService'
+        self.CompanyList = settings.DG_NPTS_COMPANY_LIST
+
+    def test(self):
+        """验证是否登录"""
+        url = 'https://app.singlewindow.cn/cas/result.jsp?result=1&callback=jQuery1124036012261417816305_{0}'.format(str(time.time()*1000).split('.')[0])
+        header = {
+            'Host': 'app.singlewindow.cn',
+            'Connection': 'keep-alive',
+            'Pragma': 'no-cache',
+            'Cache-Control': 'no-cache',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'Accept': '*/*',
+            'Referer': 'http://www.singlewindow.cn/singlewindow/standard/app.jspx?area_id=440000',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+        }
+        self.session.cookies.update(self.get_cookie())
+        res = self.session.get(url=url, headers=header, verify=False)
+        print('res.text = ', res.text)
 
     @error_2_send_email
     def get_web_cookie(self):
         while not self.get_login_cookie():
             log.info('登陆失败，1S后重新登陆..')
             time.sleep(1)
-        self.session.get('http://sz.singlewindow.cn/dyck/swProxy/deskserver/sw/deskIndex?menu_id=nems', timeout=30)
+        self.set_js_cookie()
         headers = {
-            'Accept': 'application/json, text/javascript, */*; q=0.01',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/json',
-            'Referer': None,
+            'Host': 'www.singlewindow.gd.cn',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Referer': 'http://www.singlewindow.cn/singlewindow/standard/app.jspx?area_id=440000',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
         }
-        self.session.headers.update(headers)
-        self.session.get(self.CookieUrl, timeout=30)
-        self.session.cookies.update({"loginSignal": '0'})
-        self.save_cookie()
+        self.session.cookies.update(self.get_cookie())
+        # res = self.session.get(self.CookieUrl, headers=headers, timeout=30, verify=False, allow_redirects=False)
+        res = self.session.get(self.CookieUrl, headers=headers, timeout=30, verify=False)
+        if res.status_code == 200:
+            self.save_cookie()
+        else:
+            raise Exception('大爷的')
         return self.session.cookies.get_dict()
 
     def update_npts_cm_list_info(self, nptsno, seqNo):
@@ -84,8 +110,8 @@ class NptsSpider(BaseCls):
                         log.info('海关今日更新手册号{}的单损耗序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
-                except Exception as e:
-                    log.info(str(e))
+                except:
+                    log.info(traceback.format_exc())
                     return
 
     @error_2_send_email
@@ -138,8 +164,8 @@ class NptsSpider(BaseCls):
                         log.info('海关今日更新手册号{}的成品序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
-                except Exception as e:
-                    log.info(str(e))
+                except:
+                    log.info(traceback.format_exc())
                     return
 
     @error_2_send_email
@@ -198,31 +224,30 @@ class NptsSpider(BaseCls):
     @error_2_send_email
     def get_company_seqno(self):
         """查询页面结果字典的生成器，使用yield实现"""
-        headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json;charset=UTF-8",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/nemsserver/sw/ems/nems/queryQualApplication?ngBasePath=http%3A%2F%2Fsz.singlewindow.cn%3A80%2Fdyck%2FswProxy%2Fnemsserver%2F",
-            "Accept-Language": "zh-CN,zh;q=0.9",
+        header = {
+            'Host': 'www.singlewindow.gd.cn',
+            'Connection': 'keep-alive',
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'X-Requested-With': 'XMLHttpRequest',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'Content-Type': 'application/json;charset=UTF-8',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/nptsserver/sw/ems/npts/queryEml?sysId=B1&ngBasePath=http%3A%2F%2Fwww.singlewindow.gd.cn%3A80%2Findex%2FswProxy%2Fnptsserver%2F',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
         }
         postdata = {"sysId": "B1", "status": " ", "statusName": "全部", "selTradeCode": "", "emlNo": "",
-                    "seqNo": "", "bizopEtpsno": "", "bizopEtpsSccd": "", "inputDateStart": "", "inputDateEnd": "",
-                    "inputCode": "4403180896"}
-        self.session.headers.update(headers)
+                    "seqNo": "", "bizopEtpsno": "", "bizopEtpsSccd": "", "inputTimeStart": "", "inputTimeEnd": "",
+                    "inputCode": "4419W4K601"}
         self.session.cookies.update(self.get_cookie())
         for i in self.CompanyList:
             postdata['selTradeCode'] = i
-            http_res = self.session.post(self.RealUrl, data=json.dumps(postdata), timeout=30)
+            http_res = self.session.post(self.CompanysUrl, headers=header, data=json.dumps(postdata), timeout=30, verify=False)
             try:
                 response_dict = json.loads(http_res.text)
                 yield i, response_dict
             except:
                 self.session.cookies.update(self.get_cookie(LOCAL_COOKIE_FLG=False))
-                http_res = self.session.post(self.RealUrl, data=json.dumps(postdata), timeout=30)
+                http_res = self.session.post(self.CompanysUrl, data=json.dumps(postdata), timeout=30, verify=False)
                 try:
                     response_dict = json.loads(http_res.text)
                     yield i, response_dict
@@ -233,23 +258,20 @@ class NptsSpider(BaseCls):
     def get_npts_head_info(self, seqNo):
         """获取表头数据"""
         headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json;charset=UTF-8",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml?flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/".format(
-                seqNo),
-            "Accept-Language": "zh-CN,zh;q=0.9",
-            'Cache-Control': None,
-            'Content-Length': None,
+            'Host': 'www.singlewindow.gd.cn',
+            'Connection': 'keep-alive',
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'X-Requested-With': 'XMLHttpRequest',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'Content-Type': 'application/json;charset=UTF-8',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/nptsserver/sw/ems/npts/eml?flag=view&seqNo={}&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/nptsserver/&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/nptsserver/'.format(seqNo),
+            'Accept-Language': 'zh-CN,zh;q=0.9',
         }
         postdata = {"seqNo": seqNo}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
-        http_res = self.session.post(self.RealUrl2, data=json.dumps(postdata), timeout=30)
+        http_res = self.session.post(self.HeadUrl, data=json.dumps(postdata), timeout=30)
         return json.loads(http_res.text)
 
     @error_2_send_email
@@ -447,7 +469,7 @@ class NptsSpider(BaseCls):
             page += 1
             response_dict = self.get_npts_img_list_info(page, seqNo)
             if has_breakpoint:
-                if self.update_imglist_db(min_gdsSeqno, response_dict, nptsno):
+                if self.re_update_imglist_db(min_gdsSeqno, response_dict, nptsno):
                     _gdsSeqno = self.get_local_db_max_or_min_gdsseqno('NptsEmlImgType', seqNo, max=False)
                     if 1 == _gdsSeqno:
                         log.info('手册号{}的料件序号已更新至 {}'.format(nptsno, _gdsSeqno))
@@ -471,74 +493,71 @@ class NptsSpider(BaseCls):
                         log.info('海关今日更新手册号{}的料件序号超过{}条，{}秒后将继续爬取第{}页数据..'.format(nptsno, self.pagesize, wait_time, page + 1))
                         time.sleep(wait_time)
                         continue
-                except Exception as e:
-                    log.info(str(e))
+                except:
+                    log.info(traceback.format_exc())
                     return
 
     def get_npts_cm_list_info(self, page, seqNo):
         """料件"""
         headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml?flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/".format(
-                seqNo),
-            "Accept-Language": "zh-CN,zh;q=0.9",
+            'Host': 'www.singlewindow.gd.cn',
+            'Connection': 'keep-alive',
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'X-Requested-With': 'XMLHttpRequest',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'Content-Type': 'application/json',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/nptsserver/sw/ems/npts/eml?flag=view&seqNo={}&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/nptsserver/&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/nptsserver/'.format(seqNo),
+            'Accept-Language': 'zh-CN,zh;q=0.9',
         }
-        data = {"endprdSeqno": "", "mtpckSeqno": "", "ucnsVerno": "", "page": {"curPage": page, "pageSize": self.pagesize},
+        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": settings.pageSize},
                 "operType": "0", "seqNo": seqNo, "queryType": "Con"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
-        http_res = self.session.post(self.RealUrl3, data=json.dumps(data), timeout=30)
+        http_res = self.session.post(self.ImgAndExgUrl, data=json.dumps(data), timeout=30)
         return json.loads(http_res.text)
 
     def get_npts_img_list_info(self, page, seqNo):
         """料件"""
         headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml?flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/".format(
-                seqNo),
-            "Accept-Encoding": "gzip, deflate",
-            "Accept-Language": "zh-CN,zh;q=0.9",
+            'Host': 'www.singlewindow.gd.cn',
+            'Connection': 'keep-alive',
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'X-Requested-With': 'XMLHttpRequest',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'Content-Type': 'application/json',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/nptsserver/sw/ems/npts/eml?flag=view&seqNo={}1&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/nptsserver/&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/nptsserver/'.format(seqNo),
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
         }
-        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": self.pagesize}, "operType": "0",
-                "seqNo": seqNo, "queryType": "Img"}
+        data = {"endprdSeqno": "", "mtpckSeqno": "", "ucnsVerno": "",
+                "page": {"curPage": page, "pageSize": self.pagesize},
+                "operType": "0", "seqNo": seqNo, "queryType": "Img"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
-        http_res = self.session.post(self.RealUrl3, data=json.dumps(data), timeout=30)
+        http_res = self.session.post(self.ImgAndExgUrl, data=json.dumps(data), timeout=30)
         return json.loads(http_res.text)
 
     @error_2_send_email
     def get_npts_exg_list_info(self, page, seqNo):
         """成品"""
         headers = {
-            "Host": "sz.singlewindow.cn",
-            "Connection": "keep-alive",
-            "Content-Length": "133",
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "Origin": "http://sz.singlewindow.cn",
-            "X-Requested-With": "XMLHttpRequest",
-            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-            "Content-Type": "application/json",
-            "Referer": "http://sz.singlewindow.cn/dyck/swProxy/nptsserver/sw/ems/npts/eml?flag=view&seqNo={}&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/&ngBasePath=http://sz.singlewindow.cn:80/dyck/swProxy/nptsserver/".format(
-                seqNo),
-            "Accept-Language": "zh-CN,zh;q=0.9",
+            'Host': 'www.singlewindow.gd.cn',
+            'Connection': 'keep-alive',
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Origin': 'http://www.singlewindow.gd.cn',
+            'X-Requested-With': 'XMLHttpRequest',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+            'Content-Type': 'application/json',
+            'Referer': 'http://www.singlewindow.gd.cn/index/swProxy/nptsserver/sw/ems/npts/eml?flag=view&seqNo={}&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/nptsserver/&ngBasePath=http://www.singlewindow.gd.cn:80/index/swProxy/nptsserver/'.format(seqNo),
+            'Accept-Language': 'zh-CN,zh;q=0.9',
         }
-        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": self.pagesize}, "operType": "0",
-                "seqNo": seqNo, "queryType": "Exg"}
+        data = {"gdsMtno": "", "gdecd": "", "gdsNm": "", "page": {"curPage": page, "pageSize": settings.pageSize},
+                "operType": "0", "seqNo": seqNo, "queryType": "Exg"}
         self.session.headers.update(headers)
         self.session.cookies.update(self.get_cookie())
-        http_res = self.session.post(self.RealUrl3, headers=headers, data=json.dumps(data), timeout=30)
+        http_res = self.session.post(self.ImgAndExgUrl, headers=headers, data=json.dumps(data), timeout=30)
         return json.loads(http_res.text)
 
     def get_info(self):
@@ -558,5 +577,6 @@ class NptsSpider(BaseCls):
 
 
 if __name__ == "__main__":
-    npts = NptsSpider()
-    npts.get_info()
+    npts_obj = DgNptsSpider()
+    npts_obj.get_info()
+
